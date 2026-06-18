@@ -1,0 +1,27 @@
+query RunInput {
+  shop {
+    metafield(namespace: "$app:discounts-allocator", key: "function-configuration") {
+      value
+    }
+  }
+  cart {
+    lines {
+      quantity
+      cost {
+        totalAmount {
+          amount
+        }
+      }
+      merchandise {
+        ... on ProductVariant {
+          id
+        }
+      }
+    }
+    cost {
+      subtotalAmount {
+        amount
+      }
+    }
+  }
+}
