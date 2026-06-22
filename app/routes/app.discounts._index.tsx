@@ -125,10 +125,11 @@ export default function DiscountListPage() {
                     <s-text color="subdued">
                       {entry.scope === "product" ? "📦 Product" : "🛒 Order"}
                       {" · "}
-                      {entry.type === "percentage"
-                        ? `${entry.value}% off`
-                        : `$${entry.value} off`}
-                      {" · min "}{entry.minQuantity} item{entry.minQuantity > 1 ? "s" : ""}
+                      {entry.type === "percentage" ? "% off" : "$ off"}
+                      {" · "}
+                      {entry.tiers && entry.tiers.length > 1
+                        ? `${entry.tiers.length} tiers (${entry.tiers.map(t => t.minQuantity).join("/")})`
+                        : `min ${entry.minQuantity} item${entry.minQuantity > 1 ? "s" : ""}`}
                       {entry.shopifyDiscountId ? " · ✅ Linked" : " · ⏳ Not linked"}
                       {!entry.active && " · ⏸️ Paused"}
                     </s-text>

@@ -64,10 +64,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const title = formData.get("title") as string;
   const type = formData.get("type") as "percentage" | "fixed_amount";
   const scope = (formData.get("scope") as "order" | "product") || "order";
-  const value = formData.get("value") as string;
-  const minQuantity = parseInt(formData.get("minQuantity") as string) || 0;
   const message = formData.get("message") as string;
   const active = formData.get("active") === "true";
+
+  // Parse tiers from form data
+  let discountTiers: { minQuantity: number; value: string }[] = [];
+  const tiersRaw = formData.get("discountTiers");
+  if (tiersRaw) {
+    try { discountTiers = JSON.parse(tiersRaw as string); } catch {}
+  }
+
+  const firstTier = discountTiers.length > 0 ? discountTiers[0] : null;
 
   // Parse productIds from form data
   let productIds: string[] = [];
@@ -90,10 +97,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     title,
     type,
     scope,
-    value: value || "10",
-    minQuantity,
+    value: firstTier?.value || "10",
+    minQuantity: firstTier?.minQuantity || 0,
     message,
     active,
+    tiers: discountTiers.length > 0 ? discountTiers : undefined,
     ...(productIds.length > 0 ? { productIds } : { productIds: undefined }),
   };
 
@@ -102,7 +110,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const productFunc = await findProductFunctionNode(admin);
   const productFuncAvailable = !!(updated.scope === "product" && productFunc);
   const funcId = productFuncAvailable ? productFunc!.id : orderFunc?.id;
-  // When product function isn't available, force ORDER scope for Shopify
   const shopifyEntry: DiscountEntry = productFuncAvailable
     ? updated
     : { ...updated, scope: "order" };
@@ -144,8 +151,11 @@ export default function EditDiscountPage() {
   const [title, setTitle] = useState(entry.title);
   const [type, setType] = useState<"percentage" | "fixed_amount">(entry.type);
   const [scope, setScope] = useState<"order" | "product">(entry.scope || "order");
-  const [value, setValue] = useState(entry.value);
-  const [minQuantity, setMinQuantity] = useState(entry.minQuantity);
+  const [discountTiers, setDiscountTiers] = useState<{ minQuantity: number; value: string }[]>(
+    entry.tiers && entry.tiers.length > 0
+      ? entry.tiers
+      : [{ minQuantity: entry.minQuantity, value: entry.value }]
+  );
   const [message, setMessage] = useState(entry.message);
   const [active, setActive] = useState(entry.active);
 
@@ -162,6 +172,27 @@ export default function EditDiscountPage() {
     );
   };
 
+  const addTier = () => {
+    const last = discountTiers[discountTiers.length - 1];
+    const nextQty = last ? last.minQuantity + 1 : 2;
+    setDiscountTiers([...discountTiers, { minQuantity: nextQty, value: "10" }]);
+  };
+
+  const removeTier = (index: number) => {
+    if (discountTiers.length <= 1) return;
+    setDiscountTiers(discountTiers.filter((_, i) => i !== index));
+  };
+
+  const updateTier = (index: number, field: "minQuantity" | "value", val: string) => {
+    setDiscountTiers((prev) =>
+      prev.map((tier, i) =>
+        i === index
+          ? { ...tier, [field]: field === "minQuantity" ? parseInt(val) || 0 : val }
+          : tier
+      )
+    );
+  };
+
   // On success, redirect to list
   useEffect(() => {
     if (fetcher.data?.ok && fetcher.state === "idle") {
@@ -172,6 +203,8 @@ export default function EditDiscountPage() {
     }
   }, [fetcher.data, fetcher.state, navigate, shopify]);
 
+  const sortedTiers = [...discountTiers].sort((a, b) => a.minQuantity - b.minQuantity);
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     fetcher.submit(
@@ -180,10 +213,9 @@ export default function EditDiscountPage() {
         title,
         type,
         scope,
-        value,
-        minQuantity: String(minQuantity),
         message,
         active: String(active),
+        discountTiers: JSON.stringify(sortedTiers),
         productIds: JSON.stringify(productIds),
       },
       { method: "POST" }
@@ -238,30 +270,21 @@ export default function EditDiscountPage() {
                   Search
                 </s-button>
 
-                {/* Search results */}
                 {searchResults.length > 0 && (
-                  <s-box
-                    padding="base"
-                    borderWidth="base"
-                    borderRadius="base"
-                    background="subdued"
-                  >
+                  <s-box padding="base" borderWidth="base" borderRadius="base" background="subdued">
                     <s-stack direction="block" gap="base">
                       {searchResults.map((p) => {
                         const isSelected = productIds.includes(p.id);
                         return (
                           <s-stack key={p.id} direction="inline" gap="base" alignItems="center">
-                            <s-button
-                              variant="tertiary"
-                              onClick={() => {
-                                if (isSelected) {
-                                  setProductIds((prev) => prev.filter((id) => id !== p.id));
-                                } else {
-                                  setProductIds((prev) => [...prev, p.id]);
-                                  setProductNames((prev) => ({ ...prev, [p.id]: p.title }));
-                                }
-                              }}
-                            >
+                            <s-button variant="tertiary" onClick={() => {
+                              if (isSelected) {
+                                setProductIds((prev) => prev.filter((id) => id !== p.id));
+                              } else {
+                                setProductIds((prev) => [...prev, p.id]);
+                                setProductNames((prev) => ({ ...prev, [p.id]: p.title }));
+                              }
+                            }}>
                               {isSelected ? "☑️" : "⬜"}
                             </s-button>
                             <s-text color="base">{p.title}</s-text>
@@ -272,38 +295,19 @@ export default function EditDiscountPage() {
                   </s-box>
                 )}
 
-                {/* Selected products */}
                 {productIds.length > 0 && (
                   <>
-                    <s-text color="subdued">
-                      {productIds.length} product(s) selected
-                    </s-text>
+                    <s-text color="subdued">{productIds.length} product(s) selected</s-text>
                     <s-stack direction="block" gap="base">
                       {productIds.map((id) => (
-                        <s-box
-                          key={id}
-                          padding="base"
-                          borderWidth="base"
-                          borderRadius="base"
-                        >
-                          <s-stack
-                            direction="inline"
-                            gap="base"
-                            alignItems="center"
-                          >
+                        <s-box key={id} padding="base" borderWidth="base" borderRadius="base">
+                          <s-stack direction="inline" gap="base" alignItems="center">
                             <s-stack direction="block" gap="none" inlineSize="100%">
-                              <s-text color="base">
-                                {productNames[id] || id}
-                              </s-text>
+                              <s-text color="base">{productNames[id] || id}</s-text>
                             </s-stack>
-                            <s-button
-                              variant="tertiary"
-                              onClick={() => {
-                                setProductIds((prev) => prev.filter((x) => x !== id));
-                              }}
-                            >
-                              ✕
-                            </s-button>
+                            <s-button variant="tertiary" onClick={() => {
+                              setProductIds((prev) => prev.filter((x) => x !== id));
+                            }}>✕</s-button>
                           </s-stack>
                         </s-box>
                       ))}
@@ -313,33 +317,57 @@ export default function EditDiscountPage() {
               </s-stack>
             )}
 
-            <s-stack direction="inline" gap="base">
-              <s-select
-                label="Discount Type"
-                value={type}
-                onChange={(e) =>
-                  setType((e.target as HTMLSelectElement).value as "percentage" | "fixed_amount")
-                }
-              >
-                <s-option value="percentage">Percentage (%)</s-option>
-                <s-option value="fixed_amount">Fixed Amount ($)</s-option>
-              </s-select>
-              <s-text-field
-                label={type === "percentage" ? "Percentage" : "Amount"}
-                value={value}
-                placeholder={type === "percentage" ? "10" : "5.00"}
-                onInput={(e) => setValue((e.target as HTMLInputElement).value)}
-              ></s-text-field>
-            </s-stack>
-
-            <s-text-field
-              label="Min. Quantity"
-              value={String(minQuantity)}
-              placeholder="2"
-              onInput={(e) =>
-                setMinQuantity(parseInt((e.target as HTMLInputElement).value) || 0)
+            {/* Discount type */}
+            <s-select
+              label="Discount Type"
+              value={type}
+              onChange={(e) =>
+                setType((e.target as HTMLSelectElement).value as "percentage" | "fixed_amount")
               }
-            ></s-text-field>
+            >
+              <s-option value="percentage">Percentage (%)</s-option>
+              <s-option value="fixed_amount">Fixed Amount ($)</s-option>
+            </s-select>
+
+            {/* Tiers */}
+            <s-stack direction="block" gap="base">
+              <s-text color="base">Discount Tiers</s-text>
+
+              {discountTiers.map((tier, index) => (
+                <s-box key={index} padding="base" borderWidth="base" borderRadius="base">
+                  <s-stack direction="inline" gap="base" alignItems="center">
+                    <s-text-field
+                      label="Min Qty"
+                      value={String(tier.minQuantity)}
+                      placeholder="2"
+                      onInput={(e) =>
+                        updateTier(index, "minQuantity", (e.target as HTMLInputElement).value)
+                      }
+                    ></s-text-field>
+                    <s-text-field
+                      label={type === "percentage" ? "Value %" : "Value $"}
+                      value={tier.value}
+                      placeholder="10"
+                      onInput={(e) =>
+                        updateTier(index, "value", (e.target as HTMLInputElement).value)
+                      }
+                    ></s-text-field>
+                    <s-button
+                      variant="tertiary"
+                      tone="critical"
+                      disabled={discountTiers.length <= 1}
+                      onClick={() => removeTier(index)}
+                    >
+                      ✕
+                    </s-button>
+                  </s-stack>
+                </s-box>
+              ))}
+
+              <s-button variant="tertiary" onClick={addTier}>
+                + Add Tier
+              </s-button>
+            </s-stack>
 
             <s-text-field
               label="Display Message"
@@ -358,16 +386,14 @@ export default function EditDiscountPage() {
             {entry.shopifyDiscountId && (
               <s-banner tone="success">
                 <s-paragraph>
-                  ✅ Linked to Shopify Admin — changes will update the existing
-                  automatic discount.
+                  ✅ Linked to Shopify Admin — changes will update the existing automatic discount.
                 </s-paragraph>
               </s-banner>
             )}
             {!entry.shopifyDiscountId && (
               <s-banner tone="info">
                 <s-paragraph>
-                  ⏳ No Shopify discount linked yet. Saving will create one
-                  automatically.
+                  ⏳ No Shopify discount linked yet. Saving will create one automatically.
                 </s-paragraph>
               </s-banner>
             )}

@@ -30,6 +30,32 @@ interface DiscountEntry {
   message: string;
   active: boolean;
   shopifyDiscountId?: string | null;
+  tiers?: { minQuantity: number; value: string }[];
+}
+
+interface DiscountTier {
+  minQuantity: number;
+  value: string;
+}
+
+function resolveBestTier(
+  totalQuantity: number,
+  entry: { tiers?: DiscountTier[]; minQuantity: number; value: string }
+): { value: string } | null {
+  if (entry.tiers && entry.tiers.length > 0) {
+    const sorted = [...entry.tiers].sort((a, b) => a.minQuantity - b.minQuantity);
+    let best = null;
+    for (const tier of sorted) {
+      if (totalQuantity >= tier.minQuantity) {
+        best = tier;
+      }
+    }
+    return best ? { value: best.value } : null;
+  }
+  if (totalQuantity >= entry.minQuantity) {
+    return { value: entry.value };
+  }
+  return null;
 }
 
 interface DiscountConfig {
@@ -79,16 +105,15 @@ export function run(input: RunInput): FunctionRunResult {
 
   const discounts: DiscountOutput[] = activeEntries
     .map((entry) => {
-      if (totalQuantity < entry.minQuantity) {
-        return null;
-      }
+      const tier = resolveBestTier(totalQuantity, entry);
+      if (!tier) return null;
 
       let value: DiscountOutput["value"];
       if (entry.type === "percentage") {
-        value = { percentage: { value: entry.value } };
+        value = { percentage: { value: tier.value } };
       } else {
         value = {
-          fixedAmount: { amount: entry.value, appliesToEachItem: false },
+          fixedAmount: { amount: tier.value, appliesToEachItem: false },
         };
       }
 

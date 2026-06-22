@@ -31,6 +31,28 @@ interface DiscountEntry {
   message: string;
   active: boolean;
   productIds?: string[];
+  tiers?: { minQuantity: number; value: string }[];
+}
+
+interface DiscountTier {
+  minQuantity: number;
+  value: string;
+}
+
+function resolveBestTier(
+  totalQuantity: number,
+  entry: { tiers?: DiscountTier[]; minQuantity: number; value: string }
+): { value: string } | null {
+  if (entry.tiers && entry.tiers.length > 0) {
+    const sorted = [...entry.tiers].sort((a, b) => a.minQuantity - b.minQuantity);
+    let best = null;
+    for (const tier of sorted) {
+      if (totalQuantity >= tier.minQuantity) best = tier;
+    }
+    return best ? { value: best.value } : null;
+  }
+  if (totalQuantity >= entry.minQuantity) return { value: entry.value };
+  return null;
 }
 
 interface DiscountConfig {
@@ -75,6 +97,7 @@ export function run(input: RunInput): FunctionRunResult {
   }
 
   const entries = config.discounts || config.rules || [];
+
   const activeEntries = entries.filter(
     (e) => e.active && e.scope === "product"
   );
@@ -98,8 +121,9 @@ export function run(input: RunInput): FunctionRunResult {
       0
     );
 
-    // 不满足最低购买数量，跳过
-    if (ruleQuantity < entry.minQuantity) continue;
+    // 使用阶梯或默认规则判断
+    const tier = resolveBestTier(ruleQuantity, entry);
+    if (!tier) continue;
 
     // 构建 targets
     const targets: Target[] = eligibleLines
@@ -112,16 +136,15 @@ export function run(input: RunInput): FunctionRunResult {
 
     // 构建折扣值
     const value: DiscountValue = entry.type === "percentage"
-      ? { percentage: { value: entry.value } }
-      : { fixedAmount: { amount: entry.value, appliesToEachItem: false } };
+      ? { percentage: { value: tier.value } }
+      : { fixedAmount: { amount: tier.value, appliesToEachItem: false } };
 
     discounts.push({
       targets,
       value,
-      message: entry.message || `省 ${entry.value}${entry.type === "percentage" ? "%" : "元"}`
+      message: entry.message || `省 ${tier.value}${entry.type === "percentage" ? "%" : "元"}`
     });
   }
-
   return {
     discounts,
     discountApplicationStrategy: "ALL"

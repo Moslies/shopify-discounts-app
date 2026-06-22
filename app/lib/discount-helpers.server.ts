@@ -8,6 +8,11 @@ export const FUNCTION_UUID =
 export const PRODUCT_FUNCTION_UUID =
   "46f8b751-0dfd-0f4f-6972-a9f6330bd7492a6b791d-1e4d-5e8d-8d8d-7d7d7d7d7d7d";
 
+export interface DiscountTier {
+  minQuantity: number;
+  value: string;
+}
+
 export interface DiscountEntry {
   id: string;
   title: string;
@@ -21,6 +26,33 @@ export interface DiscountEntry {
   shopifyDiscountId?: string | null;
   /** 商品折扣绑定的商品 GID 列表，为空则适用于所有商品 */
   productIds?: string[];
+  /** 多阶梯折扣规则，为空则使用 value+minQuantity 作为默认规则 */
+  tiers?: DiscountTier[];
+}
+
+/**
+ * 根据购买数量选择最优的折扣阶梯
+ * 1. 有 tiers 且不为空 → 选择满足条件的最高阶梯
+ * 2. 否则使用默认的 value + minQuantity（向后兼容）
+ */
+export function resolveBestTier(
+  totalQuantity: number,
+  entry: { tiers?: DiscountTier[]; minQuantity: number; value: string }
+): { value: string; minQuantity: number } | null {
+  if (entry.tiers && entry.tiers.length > 0) {
+    const sorted = [...entry.tiers].sort((a, b) => a.minQuantity - b.minQuantity);
+    let best = null;
+    for (const tier of sorted) {
+      if (totalQuantity >= tier.minQuantity) {
+        best = tier;
+      }
+    }
+    return best ? { value: best.value, minQuantity: best.minQuantity } : null;
+  }
+  if (totalQuantity >= entry.minQuantity) {
+    return { value: entry.value, minQuantity: entry.minQuantity };
+  }
+  return null;
 }
 
 export interface DiscountConfig {
