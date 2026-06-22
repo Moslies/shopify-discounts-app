@@ -12,6 +12,7 @@ import {
   readConfig,
   writeConfig,
   findFunctionNode,
+  findProductFunctionNode,
   updateShopifyDiscount,
   createShopifyDiscount,
   type DiscountEntry,
@@ -30,7 +31,25 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
     throw new Response("Discount not found", { status: 404 });
   }
 
-  return { entry };
+  // Fetch product names for pre-selected products
+  let productMap: Record<string, string> = {};
+  if (entry.productIds?.length) {
+    const resp = await admin.graphql(
+      `#graphql
+      query getProducts($ids: [ID!]!) {
+        nodes(ids: $ids) {
+          ... on Product { id title }
+        }
+      }`,
+      { variables: { ids: entry.productIds } }
+    );
+    const json = await resp.json();
+    for (const node of json.data?.nodes || []) {
+      if (node) productMap[node.id] = node.title;
+    }
+  }
+
+  return { entry, productMap };
 };
 
 // ----------------------------------------------------------------
@@ -50,6 +69,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const message = formData.get("message") as string;
   const active = formData.get("active") === "true";
 
+  // Parse productIds from form data
+  let productIds: string[] = [];
+  const productIdsRaw = formData.get("productIds");
+  if (productIdsRaw) {
+    try { productIds = JSON.parse(productIdsRaw as string); } catch {}
+  }
+
   // Read current config
   const { config, ownerId } = await readConfig(admin);
 
@@ -68,14 +94,23 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     minQuantity,
     message,
     active,
+    ...(productIds.length > 0 ? { productIds } : { productIds: undefined }),
   };
 
-  // Sync Shopify discount
-  const funcNode = await findFunctionNode(admin);
+  // Sync Shopify discount — route to the correct function per scope
+  const orderFunc = await findFunctionNode(admin);
+  const productFunc = await findProductFunctionNode(admin);
+  const productFuncAvailable = !!(updated.scope === "product" && productFunc);
+  const funcId = productFuncAvailable ? productFunc!.id : orderFunc?.id;
+  // When product function isn't available, force ORDER scope for Shopify
+  const shopifyEntry: DiscountEntry = productFuncAvailable
+    ? updated
+    : { ...updated, scope: "order" };
+
   if (updated.shopifyDiscountId) {
-    await updateShopifyDiscount(admin, updated, funcNode?.id || "");
-  } else if (funcNode && updated.active) {
-    const result = await createShopifyDiscount(admin, funcNode.id, updated);
+    await updateShopifyDiscount(admin, shopifyEntry, funcId || "");
+  } else if (funcId && updated.active) {
+    const result = await createShopifyDiscount(admin, funcId, shopifyEntry);
     if (result.discountId) {
       updated.shopifyDiscountId = result.discountId;
     }
@@ -96,10 +131,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 // ----------------------------------------------------------------
 
 export default function EditDiscountPage() {
-  const { entry } = useLoaderData<typeof loader>();
+  const { entry, productMap: initialProductMap } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const navigate = useNavigate();
   const shopify = useAppBridge();
+  const productFetcher = useFetcher();
 
   const isSaving =
     ["loading", "submitting"].includes(fetcher.state) &&
@@ -112,6 +148,19 @@ export default function EditDiscountPage() {
   const [minQuantity, setMinQuantity] = useState(entry.minQuantity);
   const [message, setMessage] = useState(entry.message);
   const [active, setActive] = useState(entry.active);
+
+  // Product selection state
+  const [productIds, setProductIds] = useState<string[]>(entry.productIds || []);
+  const [productNames, setProductNames] = useState<Record<string, string>>(initialProductMap || {});
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Trigger product search on demand
+  const doSearch = (query: string) => {
+    if (!query || query.length < 2) return;
+    productFetcher.load(
+      `/app/discounts/products?query=${encodeURIComponent(query)}`
+    );
+  };
 
   // On success, redirect to list
   useEffect(() => {
@@ -135,10 +184,15 @@ export default function EditDiscountPage() {
         minQuantity: String(minQuantity),
         message,
         active: String(active),
+        productIds: JSON.stringify(productIds),
       },
       { method: "POST" }
     );
   };
+
+  const searchResults = Array.isArray(productFetcher.data)
+    ? productFetcher.data as { id: string; title: string }[]
+    : [];
 
   return (
     <s-page heading={`Edit: ${entry.title || "Untitled"}`}>
@@ -165,6 +219,99 @@ export default function EditDiscountPage() {
               <s-option value="order">Order Discount — applies to the entire order</s-option>
               <s-option value="product">Product Discount — applies to specific products</s-option>
             </s-select>
+
+            {/* Product selector — only shown for product scope */}
+            {scope === "product" && (
+              <s-stack direction="block" gap="base">
+                <s-text-field
+                  label="Search Products"
+                  value={searchQuery}
+                  placeholder="Type product name to search..."
+                  onInput={(e) =>
+                    setSearchQuery((e.target as HTMLInputElement).value)
+                  }
+                ></s-text-field>
+                <s-button
+                  variant="primary"
+                  onClick={() => doSearch(searchQuery)}
+                >
+                  Search
+                </s-button>
+
+                {/* Search results */}
+                {searchResults.length > 0 && (
+                  <s-box
+                    padding="base"
+                    borderWidth="base"
+                    borderRadius="base"
+                    background="subdued"
+                  >
+                    <s-stack direction="block" gap="base">
+                      {searchResults.map((p) => {
+                        const isSelected = productIds.includes(p.id);
+                        return (
+                          <s-stack key={p.id} direction="inline" gap="base" alignItems="center">
+                            <s-button
+                              variant="tertiary"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setProductIds((prev) => prev.filter((id) => id !== p.id));
+                                } else {
+                                  setProductIds((prev) => [...prev, p.id]);
+                                  setProductNames((prev) => ({ ...prev, [p.id]: p.title }));
+                                }
+                              }}
+                            >
+                              {isSelected ? "☑️" : "⬜"}
+                            </s-button>
+                            <s-text color="base">{p.title}</s-text>
+                          </s-stack>
+                        );
+                      })}
+                    </s-stack>
+                  </s-box>
+                )}
+
+                {/* Selected products */}
+                {productIds.length > 0 && (
+                  <>
+                    <s-text color="subdued">
+                      {productIds.length} product(s) selected
+                    </s-text>
+                    <s-stack direction="block" gap="base">
+                      {productIds.map((id) => (
+                        <s-box
+                          key={id}
+                          padding="base"
+                          borderWidth="base"
+                          borderRadius="base"
+                        >
+                          <s-stack
+                            direction="inline"
+                            gap="base"
+                            alignItems="center"
+                          >
+                            <s-stack direction="block" gap="none" inlineSize="100%">
+                              <s-text color="base">
+                                {productNames[id] || id}
+                              </s-text>
+                            </s-stack>
+                            <s-button
+                              variant="tertiary"
+                              onClick={() => {
+                                setProductIds((prev) => prev.filter((x) => x !== id));
+                              }}
+                            >
+                              ✕
+                            </s-button>
+                          </s-stack>
+                        </s-box>
+                      ))}
+                    </s-stack>
+                  </>
+                )}
+              </s-stack>
+            )}
 
             <s-stack direction="inline" gap="base">
               <s-select

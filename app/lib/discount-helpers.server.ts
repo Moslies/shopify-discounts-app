@@ -5,6 +5,9 @@
 export const FUNCTION_UUID =
   "46f8b751-0dfd-0f4f-6972-a9f6330bd7491c5b791d-0e4d-4e8d-9d8d-8d8d8d8d8d8d";
 
+export const PRODUCT_FUNCTION_UUID =
+  "46f8b751-0dfd-0f4f-6972-a9f6330bd7492a6b791d-1e4d-5e8d-8d8d-7d7d7d7d7d7d";
+
 export interface DiscountEntry {
   id: string;
   title: string;
@@ -16,6 +19,8 @@ export interface DiscountEntry {
   message: string;
   active: boolean;
   shopifyDiscountId?: string | null;
+  /** 商品折扣绑定的商品 GID 列表，为空则适用于所有商品 */
+  productIds?: string[];
 }
 
 export interface DiscountConfig {
@@ -91,9 +96,25 @@ export async function writeConfig(
   return errors.length > 0 ? errors[0].message : null;
 }
 
-// ---------- Find our function node ----------
+// ---------- Find function nodes ----------
 
 export async function findFunctionNode(
+  admin: any,
+  uuid?: string
+): Promise<{ id: string } | null> {
+  const targetUuid = uuid || FUNCTION_UUID;
+  const resp = await admin.graphql(
+    `#graphql
+    query { shopifyFunctions(first: 10) { nodes { id title } } }`
+  );
+  const json = await resp.json();
+  const nodes = json.data?.shopifyFunctions?.nodes || [];
+  return (
+    nodes.find((n: any) => n.id?.endsWith(targetUuid) || n.title === "discounts-allocator") || null
+  );
+}
+
+export async function findProductFunctionNode(
   admin: any
 ): Promise<{ id: string } | null> {
   const resp = await admin.graphql(
@@ -103,10 +124,7 @@ export async function findFunctionNode(
   const json = await resp.json();
   const nodes = json.data?.shopifyFunctions?.nodes || [];
   return (
-    nodes.find(
-      (n: any) =>
-        n.id?.endsWith(FUNCTION_UUID) || n.title === "discounts-allocator"
-    ) || null
+    nodes.find((n: any) => n.id?.endsWith(PRODUCT_FUNCTION_UUID) || n.title === "discounts-product") || null
   );
 }
 
@@ -114,8 +132,9 @@ export async function findFunctionNode(
 
 export async function getLinkedDiscounts(
   admin: any,
-  functionNodeId: string
+  functionNodeIds: string | string[]
 ): Promise<any[]> {
+  const ids = Array.isArray(functionNodeIds) ? functionNodeIds : [functionNodeIds];
   const resp = await admin.graphql(
     `#graphql
     query {
@@ -128,6 +147,7 @@ export async function getLinkedDiscounts(
               discountId
               title
               status
+              discountClass
               appDiscountType { functionId }
             }
           }
@@ -140,12 +160,27 @@ export async function getLinkedDiscounts(
   return nodes.filter(
     (n: any) =>
       n.discount?.__typename === "DiscountAutomaticApp" &&
-      n.discount?.appDiscountType?.functionId === functionNodeId
+      ids.includes(n.discount?.appDiscountType?.functionId)
   );
 }
 
 function discountClassesForScope(scope: string): string[] {
   return scope === "product" ? ["PRODUCT"] : ["ORDER"];
+}
+
+function combinesForScope(scope: string) {
+  if (scope === "product") {
+    return {
+      orderDiscounts: true,
+      productDiscounts: false,
+      shippingDiscounts: false,
+    };
+  }
+  return {
+    orderDiscounts: true,
+    productDiscounts: true,
+    shippingDiscounts: false,
+  };
 }
 
 // ---------- Create Shopify discount ----------
@@ -155,7 +190,7 @@ export async function createShopifyDiscount(
   functionNodeId: string,
   entry: DiscountEntry
 ): Promise<{ discountId?: string; error?: string }> {
-  try {
+  const doCreate = async (scope: string) => {
     const resp = await admin.graphql(
       `#graphql
       mutation createDiscount($discount: DiscountAutomaticAppInput!) {
@@ -169,23 +204,28 @@ export async function createShopifyDiscount(
           discount: {
             title: entry.title || `Discount (${entry.type} ${entry.value})`,
             functionId: functionNodeId,
-            discountClasses: discountClassesForScope(entry.scope),
-            combinesWith: {
-              orderDiscounts: true,
-              productDiscounts: true,
-              shippingDiscounts: false,
-            },
-            startsAt: new Date().toISOString(),
+            discountClasses: discountClassesForScope(scope),
+            combinesWith: combinesForScope(scope),
+            startsAt: new Date(Date.now() - 60000).toISOString(),
           },
         },
       }
     );
-    const json = await resp.json();
+    return await resp.json();
+  };
+
+  try {
+    const json = await doCreate(entry.scope);
     const result = json.data?.discountAutomaticAppCreate;
+
     if (result?.userErrors?.length) {
-      return { error: result.userErrors[0].message };
+      return { error: result.userErrors.map((e: any) => e.message).join("; ") };
     }
-    return { discountId: result?.automaticAppDiscount?.discountId };
+    const discountId = result?.automaticAppDiscount?.discountId;
+    if (!discountId) {
+      return { error: "Shopify returned no discount ID and no errors" };
+    }
+    return { discountId };
   } catch (e: any) {
     return { error: e.message };
   }
@@ -199,6 +239,7 @@ export async function updateShopifyDiscount(
   functionNodeId: string
 ): Promise<string | null> {
   if (!entry.shopifyDiscountId) return "No shopifyDiscountId";
+
   try {
     const resp = await admin.graphql(
       `#graphql
@@ -215,25 +256,25 @@ export async function updateShopifyDiscount(
             title: entry.title || `Discount (${entry.type} ${entry.value})`,
             functionId: functionNodeId,
             discountClasses: discountClassesForScope(entry.scope),
-            combinesWith: {
-              orderDiscounts: true,
-              productDiscounts: true,
-              shippingDiscounts: false,
-            },
-            startsAt: new Date().toISOString(),
+            combinesWith: combinesForScope(entry.scope),
+            startsAt: new Date(Date.now() - 60000).toISOString(),
           },
         },
       }
     );
     const json = await resp.json();
-    const errors = json.data?.discountAutomaticAppUpdate?.userErrors || [];
-    return errors.length > 0 ? errors[0].message : null;
+    const userErrors = json.data?.discountAutomaticAppUpdate?.userErrors || [];
+    return userErrors.length > 0 ? userErrors.map((e: any) => e.message).join("; ") : null;
   } catch (e: any) {
     return e.message;
   }
 }
 
 // ---------- Delete Shopify discount ----------
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 export async function deleteShopifyDiscount(
   admin: any,
@@ -242,16 +283,35 @@ export async function deleteShopifyDiscount(
   try {
     const resp = await admin.graphql(
       `#graphql
-      mutation deleteDiscount($id: ID!) {
-        discountAutomaticAppDelete(id: $id) {
+      mutation discountAutomaticDelete($id: ID!) {
+        discountAutomaticDelete(id: $id) {
+          deletedAutomaticDiscountId
           userErrors { field message }
         }
       }`,
       { variables: { id: discountId } }
     );
     const json = await resp.json();
-    const errors = json.data?.discountAutomaticAppDelete?.userErrors || [];
-    return errors.length > 0 ? errors[0].message : null;
+
+    // Check for GraphQL-level errors first
+    if (json.errors) {
+      const messages = (Array.isArray(json.errors) ? json.errors : [json.errors])
+        .map((e: any) => e.message || String(e))
+        .join("; ");
+      return `GraphQL error: ${messages}`;
+    }
+
+    // Check for application-level errors
+    const userErrors = json.data?.discountAutomaticDelete?.userErrors || [];
+    if (userErrors.length > 0) {
+      return userErrors.map((e: any) => e.message).join("; ");
+    }
+
+    // Wait for Shopify's monorail telemetry + cache invalidation to complete
+    // so the next query returns fresh data
+    await sleep(2000);
+
+    return null;
   } catch (e: any) {
     return e.message;
   }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useFetcher, useNavigate } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
@@ -25,7 +25,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 // Action — delete
 // ----------------------------------------------------------------
 
-export const action = async ({ request }: any) => {
+export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const actionType = formData.get("_action") as string;
@@ -45,7 +45,10 @@ export const action = async ({ request }: any) => {
 
   // Also delete from Shopify if linked
   if (shopifyId) {
-    await deleteShopifyDiscount(admin, shopifyId);
+    const delErr = await deleteShopifyDiscount(admin, shopifyId);
+    if (delErr) {
+      return { ok: false, errors: [`Deleted locally, but failed to remove from Shopify: ${delErr}`] };
+    }
   }
 
   return { ok: true, type: "deleted" };
@@ -93,6 +96,10 @@ export default function DiscountListPage() {
         Add Discount
       </s-button>
 
+      <s-button slot="secondary-action" variant="tertiary" onClick={() => navigate("/app/discounts/cleanup")}>
+        Clean Up Orphans
+      </s-button>
+
       {/* Empty state */}
       {local.length === 0 ? (
         <s-banner>
@@ -111,11 +118,11 @@ export default function DiscountListPage() {
                 borderRadius="base"
               >
                 <s-stack direction="inline" gap="base" alignment="center">
-                  <s-stack direction="block" gap="none" style={{ flex: 1 }}>
-                    <s-text variant="headingSm" fontWeight="bold">
+                  <s-stack direction="block" gap="none" inlineSize="100%">
+                    <s-text color="base">
                       {entry.title || "Untitled"}
                     </s-text>
-                    <s-text variant="bodySm" tone="subdued">
+                    <s-text color="subdued">
                       {entry.scope === "product" ? "📦 Product" : "🛒 Order"}
                       {" · "}
                       {entry.type === "percentage"

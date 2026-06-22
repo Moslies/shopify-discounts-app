@@ -131,6 +131,22 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/node@22.19.21)(jiti@2.7.0)(yaml@2.9.0)
 
+  extensions/discounts-product:
+    dependencies:
+      '@shopify/shopify_function':
+        specifier: ^2.0.1
+        version: 2.0.1(@parcel/watcher@2.5.6)(@types/node@22.19.21)
+      decimal.js:
+        specifier: ^10.5.0
+        version: 10.6.0
+    devDependencies:
+      '@shopify/shopify-function-test-helpers':
+        specifier: ^1.0.0
+        version: 1.1.0
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/node@22.19.21)(jiti@2.7.0)(yaml@2.9.0)
+
 packages:
 
   '@ardatan/relay-compiler@13.0.1':

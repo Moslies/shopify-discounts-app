@@ -24,6 +24,7 @@ interface DiscountEntry {
   id: string;
   title: string;
   type: "percentage" | "fixed_amount";
+  scope?: "order" | "product";
   value: string;
   minQuantity: number;
   message: string;
