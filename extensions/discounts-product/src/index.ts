@@ -80,6 +80,11 @@ interface DiscountValue {
   fixedAmount?: { amount: string; appliesToEachItem: boolean };
 }
 
+interface ProductGroup {
+  productId: string;
+  lines: CartLine[];
+}
+
 export function run(input: RunInput): FunctionRunResult {
   const noDiscount: FunctionRunResult = {
     discounts: [],
@@ -115,35 +120,54 @@ export function run(input: RunInput): FunctionRunResult {
           return pid ? productIds.includes(pid) : false;
         });
 
-    // 计算该规则适用商品的总数量
-    const ruleQuantity = eligibleLines.reduce(
-      (sum, line) => sum + line.quantity,
-      0
-    );
+    if (eligibleLines.length === 0) continue;
 
-    // 使用阶梯或默认规则判断
-    const tier = resolveBestTier(ruleQuantity, entry);
-    if (!tier) continue;
+    // 按 productId 分组，每个产品独立计算数量是否达标
+    const groups = new Map<string, ProductGroup>();
 
-    // 构建 targets
-    const targets: Target[] = eligibleLines
-      .filter((line) => line.quantity > 0 && line.merchandise?.id)
-      .map((line) => ({
-        productVariant: { id: line.merchandise!.id as string }
-      }));
+    const isUnbound = productIds.length === 0;
+    // 未绑定特定产品时，整批视为一组
+    if (isUnbound) {
+      groups.set("__all__", { productId: "__all__", lines: eligibleLines });
+    } else {
+      for (const line of eligibleLines) {
+        const pid = line.merchandise?.product?.id || "__unknown__";
+        if (!groups.has(pid)) {
+          groups.set(pid, { productId: pid, lines: [] });
+        }
+        groups.get(pid)!.lines.push(line);
+      }
+    }
 
-    if (targets.length === 0) continue;
+    for (const group of groups.values()) {
+      const groupQuantity = group.lines.reduce(
+        (sum, line) => sum + line.quantity,
+        0
+      );
 
-    // 构建折扣值
-    const value: DiscountValue = entry.type === "percentage"
-      ? { percentage: { value: tier.value } }
-      : { fixedAmount: { amount: tier.value, appliesToEachItem: false } };
+      // 每个产品独立判断阶梯
+      const tier = resolveBestTier(groupQuantity, entry);
+      if (!tier) continue;
 
-    discounts.push({
-      targets,
-      value,
-      message: entry.message || `省 ${tier.value}${entry.type === "percentage" ? "%" : "元"}`
-    });
+      // 构建该产品的 targets
+      const targets: Target[] = group.lines
+        .filter((line) => line.quantity > 0 && line.merchandise?.id)
+        .map((line) => ({
+          productVariant: { id: line.merchandise!.id as string }
+        }));
+
+      if (targets.length === 0) continue;
+
+      const value: DiscountValue = entry.type === "percentage"
+        ? { percentage: { value: tier.value } }
+        : { fixedAmount: { amount: tier.value, appliesToEachItem: false } };
+
+      discounts.push({
+        targets,
+        value,
+        message: entry.message || `省 ${tier.value}${entry.type === "percentage" ? "%" : "元"}`
+      });
+    }
   }
   return {
     discounts,
