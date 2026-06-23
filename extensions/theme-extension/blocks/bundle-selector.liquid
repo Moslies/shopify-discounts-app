@@ -1,0 +1,57 @@
+  {% render 'bundle-selector', product: closest.product %}
+
+
+
+{% style %}
+  .bundle-selector {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .bundle-selector__card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid var(--card-border-color);
+    border-radius: 0.5rem;
+    background-color: var(--card-color);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+
+  .bundle-selector__card.selected {
+    background-color: var(--card-selected-color);
+  }
+{% endstyle %}  
+
+{% schema %}
+{
+  "name": "bundle-selector",
+  "target": "section",
+  "settings": [
+    {
+      "type": "color",
+      "id": "card_color",
+      "label": "Card background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "card_selected_color",
+      "label": "Selected card color",
+      "default": "#eff6ff"
+    },
+    {
+      "type": "color",
+      "id": "card_border_color",
+      "label": "Border color",
+      "default": "#93c5fd"
+    }
+  ]
+}
+{% endschema %}

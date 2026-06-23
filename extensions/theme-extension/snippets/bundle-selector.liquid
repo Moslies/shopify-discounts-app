@@ -1,0 +1,288 @@
+{% comment %} bundle-selector.liquid {% endcomment %}
+
+{% assign bundle_config = shop.metafields["discounts-allocator"]["function-configuration"] %}
+{% assign tiers_json = '[]' %}
+
+{% if bundle_config %}
+  {% assign config = bundle_config.value %}
+  {% for discount in config.discounts %}
+    {% assign product_gid = 'gid://shopify/Product/' | append: product.id %}
+    {% if discount.productIds contains product_gid %}
+      {% assign tiers_json = discount.tiers | json %}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+
+<div class="bundle-selector" 
+     data-tiers="{{ tiers_json | escape }}"
+     data-base-price="{{ product.selected_or_first_available_variant.price }}"
+     data-variant-id="{{ product.selected_or_first_available_variant.id }}">
+
+  <div class="bundle-title">BUNDLE & SAVE</div>
+
+  {%- comment -%} Single 选项（原价）{%- endcomment -%}
+  <label class="bundle-option" data-qty="1">
+    <div class="bundle-left">
+        <div class="bundle-option-content">
+            <input style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="1" checked>
+            <div>
+                <div class="bundle-name">Single</div>
+                <div class="bundle-desc">Standard price</div>
+            </div>
+        
+        </div>
+        <div class="bundle-variant">
+            <div class="variant-specification">
+                {{ product.options | join: ' / ' }}
+            </div>
+            <select class="variant-select">
+                {% for variant in product.variants %}
+                    <option value="{{ variant.id }}" 
+                            data-price="{{ variant.price }}">
+                    {{ variant.title }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    <div class="bundle-right">
+      <div class="bundle-price">
+        {{ product.selected_or_first_available_variant.price | money }}
+      </div>
+    </div>
+  </label>
+
+  {%- comment -%} 阶梯选项（从 metafield 动态渲染）{%- endcomment -%}
+  <div id="bundle-tier-options"></div>
+
+  <button id="bundle-add-to-cart" class="bundle-btn">
+    Add to Cart
+  </button>
+</div>
+
+{% style %}
+.bundle-selector {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  max-width: 480px;
+}
+
+.bundle-title {
+  text-align: center;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #555;
+}
+
+.bundle-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.bundle-option:has(input:checked) {
+  border-color: #000;
+}
+
+.bundle-left {
+  flex: 1;
+}
+.bundle-option-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.bundle-name {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.bundle-desc {
+  font-size: 13px;
+  color: #777;
+}
+
+.bundle-right {
+  text-align: right;
+}
+
+.bundle-price {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.bundle-original-price {
+  text-decoration: line-through;
+  color: #999;
+  font-size: 13px;
+}
+
+.bundle-save-badge {
+  background: #f0f0f0;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-left: 6px;
+}
+
+.bundle-save-text {
+  font-size: 13px;
+  color: #555;
+}
+
+.popular-badge {
+  position: absolute;
+  top: -12px;
+  right: 12px;
+  background: #000;
+  color: #fff;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.variant-specification {
+    font-size: 13px;
+    color: #777;
+}
+
+.variant-select {
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.bundle-btn {
+  width: 100%;
+  padding: 14px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.bundle-btn:hover {
+  background: #333;
+}
+{% endstyle %}
+
+<script>
+    (function () {
+  const container = document.querySelector('.bundle-selector');
+  if (!container) return;
+
+  const tiersRaw = container.dataset.tiers;
+  const tiers = JSON.parse(tiersRaw || '[]');
+  const tierContainer = document.getElementById('bundle-tier-options');
+  const variantSelect = container.querySelector('.variant-select');
+
+  // 获取当前选中变体价格
+  function getBasePrice() {
+    const selected = variantSelect.options[variantSelect.selectedIndex];
+    return parseInt(selected.dataset.price, 10);
+  }
+
+  // 格式化价格（Shopify 价格单位是分）
+  function formatMoney(cents) {
+    return '¥' + (cents / 100).toFixed(2);
+  }
+
+  // 渲染阶梯选项
+  function renderTiers() {
+    const basePrice = getBasePrice();
+    tierContainer.innerHTML = '';
+
+    const tierNames = ['', 'Single', 'Duo', 'Trio', 'Quad'];
+    const popularIndex = 1; // 第二个阶梯标记为 Most Popular
+
+    tiers.forEach((tier, index) => {
+      const qty = tier.minQuantity;
+      const discountPct = parseFloat(tier.value);
+      const originalTotal = basePrice * qty;
+      const discountedTotal = Math.round(originalTotal * (1 - discountPct / 100));
+      const savedAmount = originalTotal - discountedTotal;
+
+      const name = tierNames[qty] || `${qty} Pack`;
+      const isPopular = index === popularIndex;
+
+      const label = document.createElement('label');
+      label.className = 'bundle-option';
+      label.dataset.qty = qty;
+      label.innerHTML = `
+        <input type="radio" name="bundle-qty" value="${qty}">
+        <div class="bundle-left">
+          <div class="bundle-name">
+            ${name}
+            <span class="bundle-save-badge">SAVE ${formatMoney(savedAmount)}</span>
+          </div>
+          <div class="bundle-save-text">You save ${discountPct}%</div>
+        </div>
+        <div class="bundle-right">
+          <div class="bundle-price">${formatMoney(discountedTotal)}</div>
+          <div class="bundle-original-price">${formatMoney(originalTotal)}</div>
+        </div>
+        ${isPopular ? '<div class="popular-badge">Most Popular</div>' : ''}
+      `;
+      tierContainer.appendChild(label);
+    });
+  }
+
+  // 加入购物车
+  document.getElementById('bundle-add-to-cart').addEventListener('click', async () => {
+    const selectedQty = parseInt(
+      document.querySelector('input[name="bundle-qty"]:checked')?.value || '1',
+      10
+    );
+    const variantId = variantSelect.value;
+
+    const btn = document.getElementById('bundle-add-to-cart');
+    btn.textContent = 'Adding...';
+    btn.disabled = true;
+
+    try {
+      await fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: Array.from({ length: selectedQty }, () => ({
+            id: parseInt(variantId, 10),
+            quantity: 1
+          }))
+        })
+      });
+      window.location.href = '/cart';
+    } catch (e) {
+      btn.textContent = 'Error, try again';
+      btn.disabled = false;
+    }
+  });
+
+  // 变体切换时重新计算价格
+  variantSelect.addEventListener('change', renderTiers);
+
+  // 初始渲染
+  renderTiers();
+})();
+
+</script>
