@@ -52,10 +52,3 @@ required = true
 name = "Description"
 type = "multi_line_text_field"
 
-[shop.metafields.app.function_configuration]
-name = "Discounts Allocator Config"
-description = "Stores the discount rules configuration for the discounts-allocator function"
-type = "json"
-
-  [shop.metafields.app.function_configuration.access]
-  admin = "merchant_read_write"

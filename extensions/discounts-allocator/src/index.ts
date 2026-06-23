@@ -93,7 +93,7 @@ export function run(input: RunInput): FunctionRunResult {
 
   // Support both "discounts" and legacy "rules" field
   const entries = config.discounts || config.rules || [];
-  const activeEntries = entries.filter((e) => e.active);
+  const activeEntries = entries.filter((e) => e.active && e.scope !== "product");
   if (activeEntries.length === 0) {
     return { discounts: [], discountApplicationStrategy: "FIRST" };
   }

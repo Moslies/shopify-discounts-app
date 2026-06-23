@@ -70,7 +70,7 @@ export async function readConfig(admin: any): Promise<{
     query {
       shop {
         id
-        metafield(namespace: "$app:discounts-allocator", key: "function-configuration") {
+        metafield(namespace: "discounts-allocator", key: "function-configuration") {
           value
         }
       }
@@ -113,7 +113,7 @@ export async function writeConfig(
       variables: {
         metafields: [
           {
-            namespace: "$app:discounts-allocator",
+            namespace: "discounts-allocator",
             key: "function-configuration",
             type: "json",
             value: JSON.stringify(config),
