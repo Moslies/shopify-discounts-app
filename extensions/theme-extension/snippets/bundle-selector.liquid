@@ -40,14 +40,18 @@
             <div class="variant-specification">
                 {{ product.options | join: ' / ' }}
             </div>
-            <select class="bundle-single-select variant-select">
-                {% for variant in product.variants %}
-                    <option value="{{ variant.id }}" 
-                            data-price="{{ variant.price }}">
-                    {{ variant.title }}
-                    </option>
-                {% endfor %}
-            </select>
+            <div class="variant-select-wrapper">
+              <select class="bundle-single-select variant-select">
+                  {% for variant in product.variants %}
+                      <option value="{{ variant.id }}" 
+                              data-price="{{ variant.price }}"
+                              data-available="{{ variant.available }}"{% unless variant.available %} disabled{% endunless %}>
+                          {{ variant.title }}{% unless variant.available %} - Sold out{% endunless %}
+                      </option>
+                  {% endfor %}
+              </select>
+              <div class="variant-availability-message"></div>
+            </div>
         </div>
     </div>
     
@@ -156,6 +160,36 @@
   display: block;
 }
 
+.bundle-option.unavailable {
+  border-color: #e0e0e0;
+}
+
+.variant-select-wrapper {
+  position: relative;
+}
+
+.variant-select-wrapper.unavailable .variant-select {
+  border-color: #d32f2f;
+  box-shadow: 0 0 0 1px rgba(211, 47, 47, 0.35);
+}
+
+.variant-availability-message {
+  display: none;
+  margin-top: 4px;
+  padding: 8px;
+  border: 1px solid #f5c2c7;
+  background: #fdecea;
+  border-radius: 6px;
+  color: #d32f2f;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+
+.variant-select-wrapper.unavailable .variant-availability-message {
+  display: block;
+}
+
 .popular-badge {
   position: absolute;
   top: -12px;
@@ -186,7 +220,28 @@
   border: 1px solid #ccc;
   border-radius: 4px;
   width: 77%;
+  height: 32px;
 }
+
+option:disabled {
+  color: #999;
+  text-decoration: line-through;
+}
+
+/* disabled option 视觉样式 */
+.variant-select option:disabled {
+  color: #999;
+  text-decoration: line-through;
+  background-color: #f5f5f5;
+}
+
+/* 当前选中项是 disabled 时，整个 select 显示禁止样式 */
+.variant-select:has(option:checked:disabled) {
+  cursor: not-allowed !important;
+  color: #999;
+  background-color: #f5f5f5;
+}
+
 {% endstyle %}
 
 <script>
@@ -217,7 +272,7 @@
   function buildVariantSelects(qty) {
     const optionsHtml = Array.from(variantSelect.options)
       .map((opt) => `
-            <option value="${opt.value}" data-price="${opt.dataset.price}" ${opt.value === variantSelect.value ? 'selected' : ''}>
+            <option value="${opt.value}" data-price="${opt.dataset.price}" data-available="${opt.dataset.available}" ${opt.disabled ? 'disabled' : ''} ${opt.value === variantSelect.value ? 'selected' : ''}>
               ${opt.text}
             </option>`)
       .join('');
@@ -225,9 +280,12 @@
     return Array.from({ length: qty }, (_, index) => `
           <div>
             <span class="bundle-option-index">#${index + 1}</span>
-            <select class="bundle-tier-select variant-select" data-index="${index + 1}">
-                ${optionsHtml}
-            </select>
+            <div class="variant-select-wrapper">
+              <select class="bundle-tier-select variant-select" data-index="${index + 1}">
+                  ${optionsHtml}
+              </select>
+              <div class="variant-availability-message"></div>
+            </div>
           </div>
         `).join('');
   }
@@ -293,9 +351,38 @@
     }
   }
 
+  function isOptionAvailable(option) {
+    return option && (option.dataset.available === 'true' || option.dataset.available === true);
+  }
+
+  function updateAvailability(select) {
+    const option = select.options[select.selectedIndex];
+    const wrapper = select.closest('div');
+    const messageEl = wrapper?.querySelector('.variant-availability-message');
+    const selectWrapper = select.closest('.variant-select-wrapper');
+
+    if (!messageEl) return;
+
+    if (!isOptionAvailable(option)) {
+      messageEl.textContent = 'Sorry, This variant is sold out, please choose another option.';
+      if (selectWrapper) selectWrapper.classList.add('unavailable');
+    } else {
+      messageEl.textContent = '';
+      if (selectWrapper) selectWrapper.classList.remove('unavailable');
+    }
+  }
+
+  function updateAllAvailability() {
+    updateAvailability(variantSelect);
+    Array.from(container.querySelectorAll('.bundle-tier-select')).forEach(updateAvailability);
+  }
+
   function attachTierSelectListeners(label) {
     Array.from(label.querySelectorAll('.bundle-tier-select')).forEach((select) => {
-      select.addEventListener('change', () => updateTierPrice(label));
+      select.addEventListener('change', () => {
+        updateTierPrice(label);
+        updateAvailability(select);
+      });
     });
   }
 
@@ -424,13 +511,16 @@
       updateCurrencyCode(newCurrency);
       updateSinglePrice();
       updateAllTierPrices();
+      updateAllAvailability();
     }
   }
 
-  // 变体切换时重新计算价格
+  // 变体切换时重新计算价格和可用性提示
   variantSelect.addEventListener('change', () => {
     updateSinglePrice();
     updateAllTierPrices();
+    updateAvailability(variantSelect);
+    updateAllAvailability();
   });
 
   document.addEventListener('currency:change', handleCurrencyChange);
@@ -442,6 +532,7 @@
   renderTiers();
   updateSinglePrice();
   updateAllTierPrices();
+  updateAllAvailability();
   handleCurrencyChange();
 })();
 </script>
