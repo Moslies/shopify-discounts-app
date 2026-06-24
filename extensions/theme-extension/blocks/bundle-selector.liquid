@@ -1,4 +1,17 @@
-  {% render 'bundle-selector', product: closest.product %}
+{%- assign card_color = block.settings.card_color | default: '#ffffff' -%}
+{%- assign selected_color = block.settings.selected_color | default: '#fff' -%}
+{%- assign border_color = block.settings.border_color | default: '#93c5fd' -%}
+{%- assign popular_indexs = block.settings.popular_indexs | default: 2 -%}
+
+<div 
+    style="
+    --card-color: {{ card_color }};
+    --selected-color: {{ selected_color }};
+    --border-color: {{ border_color }};
+    "
+>
+  {% render 'bundle-selector', popular_indexs: popular_indexs %}
+</div>
 
 
 
@@ -7,7 +20,6 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 1rem;
   }
 
   .bundle-selector__card {
@@ -15,7 +27,6 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 1rem;
     border: 1px solid var(--card-border-color);
     border-radius: 0.5rem;
     background-color: var(--card-color);
@@ -35,6 +46,12 @@
   "target": "section",
   "settings": [
     {
+      "type": "number",
+      "id": "popular_indexs",
+      "label": "热门套餐索引",
+      "default": 2
+    },
+    {
       "type": "color",
       "id": "card_color",
       "label": "Card background",
@@ -42,16 +59,17 @@
     },
     {
       "type": "color",
-      "id": "card_selected_color",
-      "label": "Selected card color",
-      "default": "#eff6ff"
+      "id": "selected_color",
+      "label": "selected_background",
+      "default": "#fff"
     },
     {
       "type": "color",
-      "id": "card_border_color",
-      "label": "Border color",
-      "default": "#93c5fd"
+      "id": "border_color",
+      "label": "selected_border_color",
+      "default": "#000"
     }
+
   ]
 }
 {% endschema %}

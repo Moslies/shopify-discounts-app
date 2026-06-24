@@ -1,5 +1,4 @@
 {% comment %} bundle-selector.liquid {% endcomment %}
-
 {% assign bundle_config = shop.metafields["discounts-allocator"]["function-configuration"] %}
 {% assign tiers_json = '[]' %}
 
@@ -15,11 +14,15 @@
 {% endif %}
 
 
-<div class="bundle-selector" 
-     data-tiers="{{ tiers_json | escape }}"
-     data-base-price="{{ product.selected_or_first_available_variant.price }}"
-     data-variant-id="{{ product.selected_or_first_available_variant.id }}">
-
+<div 
+    class="bundle-selector" 
+    data-tiers="{{ tiers_json | escape }}"
+    data-base-price="{{ product.selected_or_first_available_variant.price }}"
+    data-variant-id="{{ product.selected_or_first_available_variant.id }}"
+    data-currency-code="{{ shop.currency }}"
+    data-specification="{{ product.options | join: ' / ' | escape }}"
+    data-popular_indexs="{{ popular_indexs | escape}}"
+>
   <div class="bundle-title">BUNDLE & SAVE</div>
 
   {%- comment -%} Single 选项（原价）{%- endcomment -%}
@@ -37,7 +40,7 @@
             <div class="variant-specification">
                 {{ product.options | join: ' / ' }}
             </div>
-            <select class="variant-select">
+            <select class="bundle-single-select variant-select">
                 {% for variant in product.variants %}
                     <option value="{{ variant.id }}" 
                             data-price="{{ variant.price }}">
@@ -69,6 +72,7 @@
   border-radius: 8px;
   padding: 16px;
   max-width: 480px;
+  background-color: var(--card-color);
 }
 
 .bundle-title {
@@ -88,14 +92,15 @@
   border: 2px solid #e0e0e0;
   border-radius: 8px;
   padding: 12px;
-  margin-bottom: 8px;
   cursor: pointer;
   position: relative;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background-color 0.2s;
+  background: #ededed;
 }
 
 .bundle-option:has(input:checked) {
-  border-color: #000;
+  border-color: var(--border-color);
+  background: var(--selected-color);
 }
 
 .bundle-left {
@@ -146,6 +151,15 @@
   color: #555;
 }
 
+.bundle-option .bundle-variant {
+  display: none;
+  margin-top: 8px;
+}
+
+.bundle-option:has(input:checked) .bundle-variant {
+  display: block;
+}
+
 .popular-badge {
   position: absolute;
   top: -12px;
@@ -163,11 +177,19 @@
     color: #777;
 }
 
+.bundle-option-index {
+  font-weight: bold;
+  font-size: 12px;
+  display: inline-block;
+  width: 20px;
+}
+
 .variant-select {
   margin-top: 6px;
   padding: 4px 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
+  width: 77%;
 }
 
 .bundle-btn {
@@ -191,34 +213,124 @@
     (function () {
   const container = document.querySelector('.bundle-selector');
   if (!container) return;
-
+  console.log('popular_indexs', container.dataset.popular_indexs);
+  const popular_indexs = parseInt(container.dataset.popular_indexs || '2', 10);
+  const specification = container.dataset.specification;
   const tiersRaw = container.dataset.tiers;
   const tiers = JSON.parse(tiersRaw || '[]');
   const tierContainer = document.getElementById('bundle-tier-options');
-  const variantSelect = container.querySelector('.variant-select');
+  const variantSelect = container.querySelector('.bundle-single-select');
 
-  // 获取当前选中变体价格
-  function getBasePrice() {
-    const selected = variantSelect.options[variantSelect.selectedIndex];
-    return parseInt(selected.dataset.price, 10);
+  function getSelectPrice(select) {
+    const selected = select.options[select.selectedIndex];
+    return parseInt(selected.dataset.price || '0', 10);
   }
 
-  // 格式化价格（Shopify 价格单位是分）
+  function getCurrencyCode() {
+    return container.dataset.currencyCode || (window.Shopify && window.Shopify.currency && window.Shopify.currency.active) || 'USD';
+  }
+
+  function updateCurrencyCode(code) {
+    if (!code) return;
+    container.dataset.currencyCode = code;
+  }
+
+  function buildVariantSelects(qty) {
+    const optionsHtml = Array.from(variantSelect.options)
+      .map((opt) => `
+            <option value="${opt.value}" data-price="${opt.dataset.price}" ${opt.value === variantSelect.value ? 'selected' : ''}>
+              ${opt.text}
+            </option>`)
+      .join('');
+
+    return Array.from({ length: qty }, (_, index) => `
+          <div>
+            <span class="bundle-option-index">#${index + 1}</span>
+            <select class="bundle-tier-select variant-select" data-index="${index + 1}">
+                ${optionsHtml}
+            </select>
+          </div>
+        `).join('');
+  }
+
   function formatMoney(cents) {
-    return '¥' + (cents / 100).toFixed(2);
+    const currency = getCurrencyCode();
+    const amount = (cents / 100).toFixed(2);
+    const currencySymbols = {
+      USD: '$',
+      CAD: '$',
+      AUD: '$',
+      NZD: '$',
+      HKD: '$',
+      SGD: '$',
+      EUR: '€',
+      GBP: '£',
+      JPY: '¥',
+      CNY: '¥',
+      SEK: 'kr',
+      NOK: 'kr',
+      DKK: 'kr',
+      CHF: 'CHF',
+      KRW: '₩',
+      INR: '₹',
+    };
+
+    if (currencySymbols[currency]) {
+      return `${currencySymbols[currency]}${amount}`;
+    }
+
+    try {
+      const formatted = new Intl.NumberFormat(navigator.language || 'en-US', {
+        style: 'currency',
+        currency,
+        currencyDisplay: 'symbol',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(cents / 100);
+      return formatted.replace(/\s*([A-Z]{2,3})\s*/g, '').trim();
+    } catch (error) {
+      return `${currency} ${amount}`;
+    }
+  }
+
+  function updateSinglePrice() {
+    const priceEl = container.querySelector('.bundle-option[data-qty="1"] .bundle-price');
+    if (!priceEl) return;
+    priceEl.textContent = formatMoney(getSelectPrice(variantSelect));
+  }
+
+  function updateTierPrice(label) {
+    const tierSelects = Array.from(label.querySelectorAll('.bundle-tier-select'));
+    const originalTotal = tierSelects.reduce((sum, select) => sum + getSelectPrice(select), 0);
+    const discountPct = parseFloat(label.dataset.discountPct || '0');
+    const discountedTotal = Math.round(originalTotal * (1 - discountPct / 100));
+    const savedAmount = originalTotal - discountedTotal;
+
+    label.querySelector('.bundle-price').textContent = formatMoney(discountedTotal);
+    label.querySelector('.bundle-original-price').textContent = formatMoney(originalTotal);
+    const saveBadge = label.querySelector('.bundle-save-badge');
+    if (saveBadge) {
+      saveBadge.textContent = `SAVE ${formatMoney(savedAmount)}`;
+    }
+  }
+
+  function attachTierSelectListeners(label) {
+    Array.from(label.querySelectorAll('.bundle-tier-select')).forEach((select) => {
+      select.addEventListener('change', () => updateTierPrice(label));
+    });
   }
 
   // 渲染阶梯选项
   function renderTiers() {
-    const basePrice = getBasePrice();
     tierContainer.innerHTML = '';
 
     const tierNames = ['', 'Single', 'Duo', 'Trio', 'Quad'];
-    const popularIndex = 1; // 第二个阶梯标记为 Most Popular
+    const popularIndex = (popular_indexs - 2); // 第二个阶梯标记为 Most Popular
 
     tiers.forEach((tier, index) => {
       const qty = tier.minQuantity;
       const discountPct = parseFloat(tier.value);
+      const basePrice = getSelectPrice(variantSelect);
       const originalTotal = basePrice * qty;
       const discountedTotal = Math.round(originalTotal * (1 - discountPct / 100));
       const savedAmount = originalTotal - discountedTotal;
@@ -229,14 +341,24 @@
       const label = document.createElement('label');
       label.className = 'bundle-option';
       label.dataset.qty = qty;
+      label.dataset.discountPct = discountPct;
+      label.style.marginTop = '12px';
       label.innerHTML = `
-        <input type="radio" name="bundle-qty" value="${qty}">
         <div class="bundle-left">
-          <div class="bundle-name">
-            ${name}
-            <span class="bundle-save-badge">SAVE ${formatMoney(savedAmount)}</span>
+          <div class="bundle-option-content">
+            <input style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="${qty}">
+            <div>
+              <div class="bundle-name">
+                ${name}
+                <span class="bundle-save-badge">SAVE ${formatMoney(savedAmount)}</span>
+              </div>
+              <div class="bundle-desc">You save ${discountPct}%</div>
+            </div>
           </div>
-          <div class="bundle-save-text">You save ${discountPct}%</div>
+          <div class="bundle-variant">
+            <div class="variant-specification">${specification}</div>
+            ${buildVariantSelects(qty)}
+          </div>
         </div>
         <div class="bundle-right">
           <div class="bundle-price">${formatMoney(discountedTotal)}</div>
@@ -245,6 +367,7 @@
         ${isPopular ? '<div class="popular-badge">Most Popular</div>' : ''}
       `;
       tierContainer.appendChild(label);
+      attachTierSelectListeners(label);
     });
   }
 
@@ -254,35 +377,70 @@
       document.querySelector('input[name="bundle-qty"]:checked')?.value || '1',
       10
     );
-    const variantId = variantSelect.value;
+    const selectedRadio = document.querySelector('input[name="bundle-qty"]:checked');
+    let lineItems = [];
+
+    if (selectedQty === 1 && selectedRadio.closest('.bundle-option').dataset.qty === '1') {
+      lineItems = [{
+        id: parseInt(variantSelect.value, 10),
+        quantity: 1
+      }];
+    } else {
+      const selectedLabel = selectedRadio.closest('.bundle-option');
+      const tierSelects = Array.from(selectedLabel.querySelectorAll('.bundle-tier-select'));
+      lineItems = tierSelects.map((select) => ({
+        id: parseInt(select.value, 10),
+        quantity: 1
+      }));
+    }
 
     const btn = document.getElementById('bundle-add-to-cart');
     btn.textContent = 'Adding...';
     btn.disabled = true;
 
     try {
-      await fetch('/cart/add.js', {
+      const response = await fetch('/cart/add.js', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: Array.from({ length: selectedQty }, () => ({
-            id: parseInt(variantId, 10),
-            quantity: 1
-          }))
-        })
+        body: JSON.stringify({ items: lineItems })
       });
-      window.location.href = '/cart';
+ 
     } catch (e) {
       btn.textContent = 'Error, try again';
       btn.disabled = false;
     }
   });
 
+  function updateAllTierPrices() {
+    const tierLabels = Array.from(container.querySelectorAll('.bundle-option')).filter((label) => label.dataset.qty !== '1');
+    tierLabels.forEach((label) => updateTierPrice(label));
+  }
+
+  function handleCurrencyChange(event) {
+    const newCurrency = event?.detail?.currency || (window.Shopify && window.Shopify.currency && window.Shopify.currency.active);
+    if (newCurrency) {
+      updateCurrencyCode(newCurrency);
+      updateSinglePrice();
+      updateAllTierPrices();
+    }
+  }
+
   // 变体切换时重新计算价格
-  variantSelect.addEventListener('change', renderTiers);
+  variantSelect.addEventListener('change', () => {
+    updateSinglePrice();
+    updateAllTierPrices();
+  });
+
+  document.addEventListener('currency:change', handleCurrencyChange);
+  document.addEventListener('currencyChanged', handleCurrencyChange);
+  document.addEventListener('shopify:currency:change', handleCurrencyChange);
+  document.addEventListener('shopify:currencyChanged', handleCurrencyChange);
 
   // 初始渲染
   renderTiers();
+  updateSinglePrice();
+  updateAllTierPrices();
+  handleCurrencyChange();
 })();
 
 </script>
