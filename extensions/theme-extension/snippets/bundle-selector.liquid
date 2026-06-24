@@ -60,10 +60,6 @@
 
   {%- comment -%} 阶梯选项（从 metafield 动态渲染）{%- endcomment -%}
   <div id="bundle-tier-options"></div>
-
-  <button id="bundle-add-to-cart" class="bundle-btn">
-    Add to Cart
-  </button>
 </div>
 
 {% style %}
@@ -191,29 +187,12 @@
   border-radius: 4px;
   width: 77%;
 }
-
-.bundle-btn {
-  width: 100%;
-  padding: 14px;
-  background: #000;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  margin-top: 8px;
-}
-
-.bundle-btn:hover {
-  background: #333;
-}
 {% endstyle %}
 
 <script>
     (function () {
   const container = document.querySelector('.bundle-selector');
   if (!container) return;
-  console.log('popular_indexs', container.dataset.popular_indexs);
   const popular_indexs = parseInt(container.dataset.popular_indexs || '2', 10);
   const specification = container.dataset.specification;
   const tiersRaw = container.dataset.tiers;
@@ -326,7 +305,6 @@
 
     const tierNames = ['', 'Single', 'Duo', 'Trio', 'Quad'];
     const popularIndex = (popular_indexs - 2); // 第二个阶梯标记为 Most Popular
-
     tiers.forEach((tier, index) => {
       const qty = tier.minQuantity;
       const discountPct = parseFloat(tier.value);
@@ -371,8 +349,41 @@
     });
   }
 
-  // 加入购物车
-  document.getElementById('bundle-add-to-cart').addEventListener('click', async () => {
+  // 加密id获取
+    /**
+   * 将数字加密成类似 bid 的 4 位短字符串
+   * @param {number} number - 需要加密的数字（如折扣、价格、ID）
+   * @param {string} salt - 盐值/密钥，用于增加破解难度，保持固定即可
+   * @returns {string} 4位加密字符串
+   */
+  function generateBid(number, salt = "my_secret_key") {
+      // 1. 将数字和盐值拼接，并计算一个简易的哈希值（MurmurHash 或 DJB2 变体）
+      let str = number.toString() + salt;
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+          hash = (hash << 5) - hash + str.charCodeAt(i);
+          hash |= 0; // 转换为 32 位整数
+      }
+      
+      // 确保是正数
+      hash = Math.abs(hash);
+
+      // 2. 自定义字符集（包含大小写字母、数字和特殊字符，共 64 个）
+      // 你可以随意打乱这个字符串的顺序，这样别人就更猜不到规律了
+      const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+      
+      // 3. 取出哈希值的一部分，映射成 4 位字符串
+      let bid = "";
+      for (let i = 0; i < 4; i++) {
+          // 每次取 hash 的一部分，对 64 取模，得到字符集中的一个字符
+          bid += charset[hash % 64];
+          hash = Math.floor(hash / 64);
+      }
+      
+      return bid;
+  }
+  // 获取选中的套餐变体
+  getBundleSelectedVariants = () => {
     const selectedQty = parseInt(
       document.querySelector('input[name="bundle-qty"]:checked')?.value || '1',
       10
@@ -380,37 +391,28 @@
     const selectedRadio = document.querySelector('input[name="bundle-qty"]:checked');
     let lineItems = [];
 
-    if (selectedQty === 1 && selectedRadio.closest('.bundle-option').dataset.qty === '1') {
+    const selectedLabel = selectedRadio.closest('.bundle-option'); // 获取当前选中的容器
+
+    if (selectedQty === 1 && selectedLabel.dataset.qty === '1') {
       lineItems = [{
         id: parseInt(variantSelect.value, 10),
-        quantity: 1
+        quantity: 1,
+        properties: {
+          _yx_bundles: JSON.stringify({ deal: 'VIR1',main: true, bid: generateBid(selectedLabel.dataset.qty) })
+        }
       }];
     } else {
-      const selectedLabel = selectedRadio.closest('.bundle-option');
       const tierSelects = Array.from(selectedLabel.querySelectorAll('.bundle-tier-select'));
       lineItems = tierSelects.map((select) => ({
         id: parseInt(select.value, 10),
-        quantity: 1
+        quantity: 1,
+        properties: {
+          _yx_bundles: JSON.stringify({ deal: 'VIR1',main: true, bid: generateBid(selectedLabel.dataset.qty) + generateBid(selectedLabel.dataset.discountPct) })
+        }
       }));
     }
-
-    const btn = document.getElementById('bundle-add-to-cart');
-    btn.textContent = 'Adding...';
-    btn.disabled = true;
-
-    try {
-      const response = await fetch('/cart/add.js', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: lineItems })
-      });
- 
-    } catch (e) {
-      btn.textContent = 'Error, try again';
-      btn.disabled = false;
-    }
-  });
-
+    return lineItems;
+  }
   function updateAllTierPrices() {
     const tierLabels = Array.from(container.querySelectorAll('.bundle-option')).filter((label) => label.dataset.qty !== '1');
     tierLabels.forEach((label) => updateTierPrice(label));
@@ -442,5 +444,46 @@
   updateAllTierPrices();
   handleCurrencyChange();
 })();
+</script>
+<script>
+const originalFetch = window.fetch;
+window.fetch = async function(url, options = {}) {
+  if (typeof url === 'string' && url.includes('/cart/add') && options.method === 'POST') {
+    
+    const body = options.body;
+
+    if (body instanceof FormData && body.get('form_type') === 'product') {
+
+      const myBundleItems = getBundleSelectedVariants();
+      if (myBundleItems.length === 0) {
+        return originalFetch(url, options);
+      }
+
+      const newFormData = new FormData();
+
+      // ✅ 保留原始头部字段（kaching 需要这些）
+      newFormData.append('form_type', body.get('form_type'));
+      newFormData.append('utf8', body.get('utf8'));
+      newFormData.append('product-id', body.get('product-id'));
+      newFormData.append('section-id', body.get('section-id'));
+      newFormData.append('sections',   body.get('sections'));
+
+      console.log('myBundleItems', myBundleItems);
+      // ✅ 追加你的 bundle items
+      myBundleItems.forEach((item, i) => {
+        newFormData.append(`items[${i}][id]`,      item.id);
+        newFormData.append(`items[${i}][quantity]`, item.quantity || 1);
+        newFormData.append(
+          `items[${i}][properties][_yx_bundles]`,
+          item.properties._yx_bundles
+        );
+      });
+
+      return originalFetch(url, { ...options, body: newFormData });
+    }
+  }
+
+  return originalFetch(url, options);
+};
 
 </script>
