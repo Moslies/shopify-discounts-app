@@ -13,6 +13,11 @@
   {% endfor %}
 {% endif %}
 
+{% if product.variants.size == 1 %}
+  {% assign variant_flag = 0 %}
+{% else %}
+  {% assign variant_flag = 62 %}
+{% endif %}
 
 <div 
     class="bundle-selector" 
@@ -22,9 +27,15 @@
     data-currency-code="{{ shop.currency }}"
     data-specification="{{ product.options | join: ' / ' | escape }}"
     data-popular_indexs="{{ popular_indexs | escape}}"
+    data-variant-flag="{{ variant_flag | escape }}"
 >
-  <div class="bundle-title">BUNDLE & SAVE</div>
-
+  <div class="bundle-title">
+    {% if tiers_json.size > 0 %}
+      BUNDLE & SAVE
+    {% else %}
+      Purchase Options
+    {% endif %}
+  </div>
   {%- comment -%} Single 选项（原价）{%- endcomment -%}
   <label class="bundle-option" data-qty="1">
     <div class="bundle-left">
@@ -36,22 +47,22 @@
             </div>
         
         </div>
-        <div class="bundle-variant">
-            <div class="variant-specification">
-                {{ product.options | join: ' / ' }}
-            </div>
-            <div class="variant-select-wrapper">
-              <select class="bundle-single-select variant-select">
-                  {% for variant in product.variants %}
-                      <option value="{{ variant.id }}" 
-                              data-price="{{ variant.price }}"
-                              data-available="{{ variant.available }}"{% unless variant.available %} disabled{% endunless %}>
-                          {{ variant.title }}{% unless variant.available %} - Sold out{% endunless %}
-                      </option>
-                  {% endfor %}
-              </select>
-              <div class="variant-availability-message"></div>
-            </div>
+        <div class="bundle-variant" style="--variant-height: 62px; height: {{ variant_flag }}px;">
+              <div class="variant-specification">
+                  {{ product.options | join: ' / ' }}
+              </div>
+              <div class="variant-select-wrapper">
+                <select class="bundle-single-select variant-select">
+                    {% for variant in product.variants %}
+                        <option value="{{ variant.id }}" 
+                                data-price="{{ variant.price }}"
+                                data-available="{{ variant.available }}"{% unless variant.available %} disabled{% endunless %}>
+                            {{ variant.title }}{% unless variant.available %} - Sold out{% endunless %}
+                        </option>
+                    {% endfor %}
+                </select>
+                <div class="variant-availability-message"></div>
+              </div>
         </div>
     </div>
     
@@ -109,12 +120,19 @@
 .bundle-option-content {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 8px;
 }
 .bundle-name {
   font-weight: bold;
   font-size: 16px;
+}
+
+.bundle-name:first-child span {
+  display: inline-block;
+  min-width: 60px;
+  text-align: left;
+  margin-right: 6px;
 }
 
 .bundle-desc {
@@ -138,12 +156,11 @@
 }
 
 .bundle-save-badge {
-  background: #f0f0f0;
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 11px;
+  background: #d9d9d9;
+  border-radius: 8px;
+  padding: 2px 4px;
+  font-size: 12px;
   font-weight: bold;
-  margin-left: 6px;
 }
 
 .bundle-save-text {
@@ -152,20 +169,25 @@
 }
 
 .bundle-option .bundle-variant {
-  display: none;
+  height: 0;
+  overflow: hidden;
   margin-top: 8px;
 }
 
 .bundle-option:has(input:checked) .bundle-variant {
-  display: block;
+  height: var(--variant-height);
+  margin-top: 12px;
+  transition: all var(--variant-qty) ease;
 }
-
 .bundle-option.unavailable {
   border-color: #e0e0e0;
 }
 
 .variant-select-wrapper {
   position: relative;
+  margin-top: 6px;
+  margin-left: 6px;
+  flex: 1;
 }
 
 .variant-select-wrapper.unavailable .variant-select {
@@ -215,14 +237,17 @@
 }
 
 .variant-select {
-  margin-top: 6px;
   padding: 4px 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
   width: 77%;
   height: 32px;
+  outline: none;
 }
-
+.variant-select:focus {
+  border: none;
+  box-shadow: 0 0 0 2px var(--bar-selected-border-color, #000);
+}
 option:disabled {
   color: #999;
   text-decoration: line-through;
@@ -251,6 +276,7 @@ option:disabled {
   const popular_indexs = parseInt(container.dataset.popular_indexs || '2', 10);
   const specification = container.dataset.specification;
   const tiersRaw = container.dataset.tiers;
+  const variantFlag = parseInt(container.dataset.variantFlag || '0', 10);
   const tiers = JSON.parse(tiersRaw || '[]');
   const tierContainer = document.getElementById('bundle-tier-options');
   const variantSelect = container.querySelector('.bundle-single-select');
@@ -278,7 +304,7 @@ option:disabled {
       .join('');
 
     return Array.from({ length: qty }, (_, index) => `
-          <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
             <span class="bundle-option-index">#${index + 1}</span>
             <div class="variant-select-wrapper">
               <select class="bundle-tier-select variant-select" data-index="${index + 1}">
@@ -414,13 +440,13 @@ option:disabled {
             <input style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="${qty}">
             <div>
               <div class="bundle-name">
-                ${name}
+                <span>${name}</span>
                 <span class="bundle-save-badge">SAVE ${formatMoney(savedAmount)}</span>
               </div>
               <div class="bundle-desc">You save ${discountPct}%</div>
             </div>
           </div>
-          <div class="bundle-variant">
+          <div class="bundle-variant" style="--variant-height: ${variantFlag ? (qty * 38 + 22 + 'px') : 0}; --variant-qty: ${qty * 0.05 + 0.1};">
             <div class="variant-specification">${specification}</div>
             ${buildVariantSelects(qty)}
           </div>
@@ -479,7 +505,6 @@ option:disabled {
     let lineItems = [];
 
     const selectedLabel = selectedRadio.closest('.bundle-option'); // 获取当前选中的容器
-
     if (selectedQty === 1 && selectedLabel.dataset.qty === '1') {
       lineItems = [{
         id: parseInt(variantSelect.value, 10),
@@ -559,10 +584,9 @@ window.fetch = async function(url, options = {}) {
       newFormData.append('section-id', body.get('section-id'));
       newFormData.append('sections',   body.get('sections'));
 
-      console.log('myBundleItems', myBundleItems);
       // ✅ 追加你的 bundle items
       myBundleItems.forEach((item, i) => {
-        newFormData.append(`items[${i}][id]`,      item.id);
+        newFormData.append(`items[${i}][id]`, item.id);
         newFormData.append(`items[${i}][quantity]`, item.quantity || 1);
         newFormData.append(
           `items[${i}][properties][_yx_bundles]`,
