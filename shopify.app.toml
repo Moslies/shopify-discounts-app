@@ -2,7 +2,7 @@
 
 client_id = "b87d8dad438c880c67cd957ddaaf4212"
 name = "Bundle-sales-app"
-application_url = "https://example.com"
+application_url = "https://shopify-discounts-app-production.up.railway.app"
 embedded = true
 
 [build]
@@ -26,7 +26,10 @@ optional_scopes = [ ]
 use_legacy_install_flow = false
 
 [auth]
-redirect_urls = [ ]
+redirect_urls = [ 
+  "https://shopify-discounts-app-production.up.railway.app/auth/callback",
+  "https://shopify-discounts-app-production.up.railway.app/auth/shopify/callback"
+ ]
 
 [product.metafields.app.demo_info]
 type = "single_line_text_field"
