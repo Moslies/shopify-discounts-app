@@ -79,7 +79,7 @@ interface Target {
 
 interface DiscountValue {
   percentage?: { value: string };
-  fixedAmount?: { amount: string; appliesToEachItem: boolean };
+  fixedAmount?: { amount: string };
 }
 
 interface ProductGroup {
@@ -164,7 +164,7 @@ export function run(input: RunInput): FunctionRunResult {
 
       const value: DiscountValue = entry.type === "percentage"
         ? { percentage: { value: tier.value } }
-        : { fixedAmount: { amount: tier.value, appliesToEachItem: false } };
+        : { fixedAmount: { amount: tier.value } };
 
       discounts.push({
         targets,

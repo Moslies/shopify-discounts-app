@@ -12,6 +12,11 @@ query RunInput {
           amount
         }
       }
+      discountAllocations {
+        discountedAmount {
+          amount
+        }
+      }
       merchandise {
         ... on ProductVariant {
           id

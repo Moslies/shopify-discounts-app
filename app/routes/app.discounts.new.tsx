@@ -244,9 +244,9 @@ export default function NewDiscountPage() {
                 <s-grid key={index} gridTemplateColumns="repeat(13, 1fr)" gap="base">
                     <s-grid-item gridColumn="span 4" gridRow="span 1">
                       <s-text-field
-                        label="Min Qty"
+                        label={scope === "order" ? "Min Amount ($)" : "Min Qty"}
                         value={String(tier.minQuantity)}
-                        placeholder="2"
+                        placeholder={scope === "order" ? "50" : "2"}
                         onInput={(e) =>
                           updateTier(index, "minQuantity", (e.target as HTMLInputElement).value)
                         }

@@ -3,6 +3,7 @@
 interface CartLine {
   quantity: number;
   cost?: { totalAmount?: { amount?: string } };
+  discountAllocations?: { discountedAmount?: { amount?: string } }[];
   merchandise?: { id?: string };
 }
 
@@ -68,7 +69,7 @@ interface DiscountOutput {
   targets: { orderSubtotal: { excludedVariantIds: string[] } }[];
   value:
     | { percentage: { value: string } }
-    | { fixedAmount: { amount: string; appliesToEachItem: boolean } };
+    | { fixedAmount: { amount: string } };
   message?: string;
 }
 
@@ -99,14 +100,19 @@ export function run(input: RunInput): FunctionRunResult {
     return { discounts: [], discountApplicationStrategy: "FIRST" };
   }
 
-  const totalQuantity = input.cart.lines.reduce(
-    (sum: number, line: CartLine) => sum + line.quantity,
-    0
-  );
+  // Calculate actual effective subtotal by subtracting per-line product discounts
+  const thresholdBase = input.cart.lines.reduce((sum: number, line: CartLine) => {
+    const lineTotal = parseFloat(line.cost?.totalAmount?.amount || "0");
+    const lineDiscounts = (line.discountAllocations || []).reduce(
+      (d: number, a) => d + parseFloat(a.discountedAmount?.amount || "0"),
+      0
+    );
+    return sum + Math.max(0, lineTotal - lineDiscounts);
+  }, 0);
 
   const discounts: DiscountOutput[] = activeEntries
     .map((entry) => {
-      const tier = resolveBestTier(totalQuantity, entry);
+      const tier = resolveBestTier(thresholdBase, entry);
       if (!tier) return null;
 
       let value: DiscountOutput["value"];
@@ -114,7 +120,7 @@ export function run(input: RunInput): FunctionRunResult {
         value = { percentage: { value: tier.value } };
       } else {
         value = {
-          fixedAmount: { amount: tier.value, appliesToEachItem: false },
+          fixedAmount: { amount: tier.value },
         };
       }
 
