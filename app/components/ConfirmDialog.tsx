@@ -75,18 +75,31 @@ export default function ConfirmDialog({
       }}
       onKeyDown={handleKeyDown}
     >
-      {/* Backdrop */}
-      <div
+      {/* Backdrop — native button to satisfy a11y interactive-element rule */}
+      <button
+        type="button"
+        aria-label="Close"
         style={{
           position: "absolute",
           inset: 0,
-          backgroundColor: visible
-            ? "rgba(0, 0, 0, 0.4)"
-            : "rgba(0, 0, 0, 0)",
-          transition: "background-color 200ms ease",
+          border: "none",
+          padding: 0,
+          background: "transparent",
+          cursor: "default",
         }}
         onClick={onCancel}
-      />
+      >
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            backgroundColor: visible
+              ? "rgba(0, 0, 0, 0.4)"
+              : "rgba(0, 0, 0, 0)",
+            transition: "background-color 200ms ease",
+          }}
+        />
+      </button>
 
       {/* Dialog card */}
       <div

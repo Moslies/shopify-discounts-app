@@ -11,6 +11,8 @@ export const PRODUCT_FUNCTION_UUID =
 export interface DiscountTier {
   minQuantity: number;
   value: string;
+  /** 每级阶梯独立的显示文案，为空则 fallback 到 DiscountEntry.title */
+  message?: string;
 }
 
 export interface DiscountEntry {
@@ -21,7 +23,7 @@ export interface DiscountEntry {
   scope: "order" | "product";
   value: string;
   minQuantity: number;
-  message: string;
+  message?: string;
   active: boolean;
   shopifyDiscountId?: string | null;
   /** 商品折扣绑定的商品 GID 列表，为空则适用于所有商品 */
@@ -38,7 +40,7 @@ export interface DiscountEntry {
 export function resolveBestTier(
   totalQuantity: number,
   entry: { tiers?: DiscountTier[]; minQuantity: number; value: string }
-): { value: string; minQuantity: number } | null {
+): { value: string; minQuantity: number; message?: string } | null {
   if (entry.tiers && entry.tiers.length > 0) {
     const sorted = [...entry.tiers].sort((a, b) => a.minQuantity - b.minQuantity);
     let best = null;
@@ -47,7 +49,7 @@ export function resolveBestTier(
         best = tier;
       }
     }
-    return best ? { value: best.value, minQuantity: best.minQuantity } : null;
+    return best ? { value: best.value, minQuantity: best.minQuantity, message: best.message } : null;
   }
   if (totalQuantity >= entry.minQuantity) {
     return { value: entry.value, minQuantity: entry.minQuantity };

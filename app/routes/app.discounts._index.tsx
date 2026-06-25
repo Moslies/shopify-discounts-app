@@ -105,6 +105,11 @@ export default function DiscountListPage() {
     setDeleteTarget(null);
   };
 
+  const handleEdit = (entry: DiscountEntry) => {
+    console.log(entry);
+    navigate(`/app/discounts/${entry.id}`)
+  }
+
   return (
     <s-page heading="Discount Rules">
       <s-button slot="primary-action" variant="primary" onClick={() => navigate("/app/discounts/new")}>
@@ -143,7 +148,7 @@ export default function DiscountListPage() {
                   <th style={{ textAlign: "left", padding: "8px 12px", width: "15%" }}>
                     <s-text color="subdued">Status</s-text>
                   </th>
-                  <th style={{ textAlign: "right", padding: "8px 12px", width: "10%" }}>
+                  <th style={{ textAlign: "center", padding: "8px 12px", width: "18%" }}>
                     <s-text color="subdued">Actions</s-text>
                   </th>
                 </tr>
@@ -182,7 +187,7 @@ export default function DiscountListPage() {
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "right", whiteSpace: "nowrap" }}>
                       <s-stack direction="inline" gap="base">
-                        <s-button variant="tertiary" onClick={() => navigate(`/app/discounts/${entry.id}`)}>Edit</s-button>
+                        <s-button variant="tertiary" onClick={() => handleEdit(entry)}>Edit</s-button>
                         <s-button
                           variant="tertiary"
                           tone="critical"

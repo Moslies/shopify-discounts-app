@@ -28,28 +28,29 @@ interface DiscountEntry {
   scope: "order" | "product";
   value: string;
   minQuantity: number;
-  message: string;
+  message?: string;
   active: boolean;
   productIds?: string[];
-  tiers?: { minQuantity: number; value: string }[];
+  tiers?: { minQuantity: number; value: string; message?: string }[];
 }
 
 interface DiscountTier {
   minQuantity: number;
   value: string;
+  message?: string;
 }
 
 function resolveBestTier(
   totalQuantity: number,
   entry: { tiers?: DiscountTier[]; minQuantity: number; value: string }
-): { value: string } | null {
+): { value: string; message?: string } | null {
   if (entry.tiers && entry.tiers.length > 0) {
     const sorted = [...entry.tiers].sort((a, b) => a.minQuantity - b.minQuantity);
     let best = null;
     for (const tier of sorted) {
       if (totalQuantity >= tier.minQuantity) best = tier;
     }
-    return best ? { value: best.value } : null;
+    return best ? { value: best.value, message: best.message } : null;
   }
   if (totalQuantity >= entry.minQuantity) return { value: entry.value };
   return null;
@@ -165,7 +166,7 @@ export function run(input: RunInput): FunctionRunResult {
       discounts.push({
         targets,
         value,
-        message: entry.message || `省 ${tier.value}${entry.type === "percentage" ? "%" : "元"}`
+        message: tier.message || `Save ${tier.value}${entry.type === "percentage" ? "%" : ""}`,
       });
     }
   }
