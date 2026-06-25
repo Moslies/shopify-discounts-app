@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "f585eeebc807102b38f058dc8138b32e"
-name = "test-number-shop"
+client_id = "b87d8dad438c880c67cd957ddaaf4212"
+name = "Bundle-sales-app"
 application_url = "https://example.com"
 embedded = true
 

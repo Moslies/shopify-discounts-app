@@ -1,5 +1,5 @@
 {
-  "name": "test-number-shop",
+  "name": "Bundle-sales-app",
   "private": true,
   "scripts": {
     "build": "react-router build",
