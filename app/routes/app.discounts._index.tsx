@@ -181,8 +181,7 @@ export default function DiscountListPage() {
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       <s-text color="subdued">
-                        {entry.shopifyDiscountId ? "✅ Linked" : "⏳ Not linked"}
-                        {!entry.active && " · ⏸️ Paused"}
+                        {entry.shopifyDiscountId ? entry.active ? "✅ Active" : "⏸️ Paused" : "⏳ Not linked"}
                       </s-text>
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "right", whiteSpace: "nowrap" }}>

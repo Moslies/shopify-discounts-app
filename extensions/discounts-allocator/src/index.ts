@@ -8,7 +8,7 @@ interface CartLine {
 
 interface Cart {
   lines: CartLine[];
-  cost?: { subtotalAmount?: { amount?: string } };
+  cost?: { subtotalAmount?: { amount?: string }; totalAmount?: { amount?: string; currencyCode?: string } };
 }
 
 interface Shop {

@@ -10,6 +10,7 @@ interface CartLine {
 
 interface Cart {
   lines: CartLine[];
+  cost?: { totalAmount?: { amount?: string; currencyCode?: string } };
 }
 
 interface Shop {
@@ -87,6 +88,8 @@ interface ProductGroup {
 }
 
 export function run(input: RunInput): FunctionRunResult {
+  const currencyCode = input.cart.cost?.totalAmount?.currencyCode || "";
+
   const noDiscount: FunctionRunResult = {
     discounts: [],
     discountApplicationStrategy: "ALL"
@@ -166,7 +169,7 @@ export function run(input: RunInput): FunctionRunResult {
       discounts.push({
         targets,
         value,
-        message: tier.message || `Save ${tier.value}${entry.type === "percentage" ? "%" : ""}`,
+        message: tier.message || `Save ${tier.value}${entry.type === "percentage" ? "%" : ` ${currencyCode}`}`,
       });
     }
   }

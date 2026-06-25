@@ -6,7 +6,7 @@
   {% assign config = bundle_config.value %}
   {% for discount in config.discounts %}
     {% assign product_gid = 'gid://shopify/Product/' | append: product.id %}
-    {% if discount.productIds contains product_gid %}
+    {% if discount.productIds contains product_gid and discount.active %}
       {% assign tiers_json = discount.tiers | json %}
       {% break %}
     {% endif %}

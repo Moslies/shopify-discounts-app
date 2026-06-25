@@ -26,6 +26,10 @@ query RunInput {
       subtotalAmount {
         amount
       }
+      totalAmount {
+        amount
+        currencyCode
+      }
     }
   }
 }
