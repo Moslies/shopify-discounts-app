@@ -11,7 +11,6 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import {
   readConfig,
   findFunctionNode,
-  findProductFunctionNode,
   getLinkedDiscounts,
   deleteShopifyDiscount,
 } from "../lib/discount-helpers.server";
@@ -38,13 +37,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       .map((d) => d.shopifyDiscountId!)
   );
 
-  // 2. Get function nodes (both order and product)
-  const orderFunc = await findFunctionNode(admin);
-  const productFunc = await findProductFunctionNode(admin);
-  const funcIds = [orderFunc, productFunc].filter(Boolean).map((f) => f!.id);
+  // 2. Get function node (combined handles all scopes)
+  const funcNode = await findFunctionNode();
+  const funcIds = funcNode ? [funcNode.id] : [];
 
   if (funcIds.length === 0) {
-    return { orphans: [], allLinked: [], error: "Discount function not found — deploy the app first." };
+    return { orphans: [], allLinked: [], error: "Discount function not found - deploy the app first." };
   }
 
   // 3. Get all Shopify discounts linked to either function
@@ -76,7 +74,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 // ----------------------------------------------------------------
-// Action — batch delete
+// Action - batch delete
 // ----------------------------------------------------------------
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -124,7 +122,7 @@ export default function CleanupPage() {
 
   const isDeleting =
     ["loading", "submitting"].includes(fetcher.state) &&
-    fetcher.formMethod === "delete";
+    fetcher.formMethod === "DELETE";
 
   // Derived: are all items selected?
   const allSelected = useMemo(
@@ -180,7 +178,7 @@ export default function CleanupPage() {
   return (
     <s-page heading="Clean Up Orphan Discounts">
       <s-button slot="primary-action" variant="tertiary" onClick={() => navigate("/app/discounts")}>
-        ← Back to Discounts
+        Back to Discounts
       </s-button>
 
       {error ? (
@@ -190,7 +188,7 @@ export default function CleanupPage() {
       ) : orphans.length === 0 ? (
         <s-banner>
           <s-paragraph>
-            🎉 No orphan discounts found. All Shopify discounts are linked to your local config.
+            No orphan discounts found. All Shopify discounts are linked to your local config.
           </s-paragraph>
         </s-banner>
       ) : (
@@ -258,7 +256,7 @@ export default function CleanupPage() {
                         variant="tertiary"
                         onClick={() => toggleItem(entry.discountId)}
                       >
-                        {selected.has(entry.discountId) ? "☑️" : "⬜"}
+                        {selected.has(entry.discountId) ? "Selected" : "Select"}
                       </s-button>
                       <s-stack direction="block" gap="none" inlineSize="100%">
                         <s-text color="base">
@@ -266,7 +264,7 @@ export default function CleanupPage() {
                         </s-text>
                         <s-text color="subdued">
                           ID: {entry.discountId}
-                          {" · "}Status: {entry.status}
+                          {" - "}Status: {entry.status}
                         </s-text>
                       </s-stack>
                     </s-stack>

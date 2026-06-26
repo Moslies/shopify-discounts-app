@@ -1,0 +1,31 @@
+query RunInput {
+  cart {
+    lines {
+      id
+      quantity
+      cost {
+        totalAmount { amount }
+      }
+      merchandise {
+        ... on ProductVariant {
+          id
+          product { id }
+        }
+      }
+    }
+    cost {
+      subtotalAmount { amount }
+      totalAmount { amount currencyCode }
+    }
+  }
+  shop {
+    metafield(namespace: "discounts-allocator", key: "function-configuration") {
+      value
+    }
+  }
+  discount {
+    metafield(namespace: "discounts-allocator", key: "discount-configuration") {
+      value
+    }
+  }
+}

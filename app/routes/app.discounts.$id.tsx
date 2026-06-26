@@ -12,7 +12,6 @@ import {
   readConfig,
   writeConfig,
   findFunctionNode,
-  findProductFunctionNode,
   updateShopifyDiscount,
   createShopifyDiscount,
   type DiscountEntry,
@@ -104,21 +103,24 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     ...(productIds.length > 0 ? { productIds } : { productIds: undefined }),
   };
 
-  // Sync Shopify discount — route to the correct function per scope
-  const orderFunc = await findFunctionNode(admin);
-  const productFunc = await findProductFunctionNode(admin);
-  const productFuncAvailable = !!(updated.scope === "product" && productFunc);
-  const funcId = productFuncAvailable ? productFunc!.id : orderFunc?.id;
-  const shopifyEntry: DiscountEntry = productFuncAvailable
-    ? updated
-    : { ...updated, scope: "order" };
+  // Find the function node
+  const funcNode = await findFunctionNode();
+  if (!funcNode) {
+    return { ok: false, errors: ["Discount function not found - deploy the app first"] };
+  }
+  const funcId = funcNode.id;
 
   if (updated.shopifyDiscountId) {
-    await updateShopifyDiscount(admin, shopifyEntry, funcId || "");
-  } else if (funcId && updated.active) {
-    const result = await createShopifyDiscount(admin, funcId, shopifyEntry);
+    const updateErr = await updateShopifyDiscount(admin, updated, funcId);
+    if (updateErr) {
+      return { ok: false, errors: [`Failed to update Shopify discount: ${updateErr}`] };
+    }
+  } else if (updated.active) {
+    const result = await createShopifyDiscount(admin, funcId, updated);
     if (result.discountId) {
       updated.shopifyDiscountId = result.discountId;
+    } else if (result.error) {
+      return { ok: false, errors: [`Failed to create Shopify discount: ${result.error}`] };
     }
   }
 
@@ -220,7 +222,7 @@ export default function EditDiscountPage() {
     <s-page heading={`Edit: ${entry.title || "Untitled"}`}>
       <s-section>
         <s-button variant="tertiary" onClick={() => navigate("/app/discounts")}>
-          ← Back
+          Back
         </s-button>
       </s-section>
 
@@ -239,13 +241,12 @@ export default function EditDiscountPage() {
               <s-select
                 label="Discount Scope"
                 value={scope}
-                onChange={(e) => {
-                  setScope((e.target as HTMLSelectElement).value as "order" | "product");
-                  setProductIds([]);
-                }}
+                onChange={(e) =>
+                  setScope((e.target as HTMLSelectElement).value as "order" | "product")
+                }
               >
-                <s-option value="order">Order Discount — applies to the entire order</s-option>
-                <s-option value="product">Product Discount — applies to specific products</s-option>
+                <s-option value="order">Order Discount - applies to the entire order</s-option>
+                <s-option value="product">Product Discount - applies to specific products</s-option>
               </s-select>
 
               <s-select
@@ -277,9 +278,9 @@ export default function EditDiscountPage() {
                 <s-grid key={index} gridTemplateColumns="repeat(13, 1fr)" gap="base">
                     <s-grid-item gridColumn="span 4" gridRow="span 1">
                       <s-text-field
-                        label="Min Qty"
+                        label={scope === "order" ? "Min Amount ($)" : "Min Qty"}
                         value={String(tier.minQuantity)}
-                        placeholder="2"
+                        placeholder={scope === "order" ? "50" : "2"}
                         onInput={(e) =>
                           updateTier(index, "minQuantity", (e.target as HTMLInputElement).value)
                         }
@@ -326,54 +327,52 @@ export default function EditDiscountPage() {
 
         <s-box paddingBlockEnd="small">
           {/* Section 3: Product Selection (optional) */}
-          {scope === "product" && (
-            <s-section>
-              <s-stack direction="block" gap="base">
-                <s-text color="base">Link Products (optional)</s-text>
+          <s-section>
+            <s-stack direction="block" gap="base">
+              <s-text color="base">Eligible Products (optional)</s-text>
 
-                <s-button variant="primary" onClick={() => setPickerOpen(true)}>
-                  {productIds.length > 0
-                    ? `Add / Remove Products (${productIds.length} selected)`
-                    : "Add Products"}
-                </s-button>
+              <s-button variant="primary" onClick={() => setPickerOpen(true)}>
+                {productIds.length > 0
+                  ? `Add / Remove Products (${productIds.length} selected)`
+                  : "Add Products"}
+              </s-button>
 
-                {productIds.length > 0 && (
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "12px" }}>
-                    {productIds.map((id) => (
-                      <li
-                        key={id}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          border: "1px solid #dfe3eb",
-                          borderRadius: "12px",
-                          padding: "12px 16px",
-                          background: "#fafbff",
-                          marginTop: "12px",
-                        }}
+              {productIds.length > 0 && (
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "12px" }}>
+                  {productIds.map((id) => (
+                    <li
+                      key={id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        border: "1px solid #dfe3eb",
+                        borderRadius: "12px",
+                        padding: "12px 16px",
+                        background: "#fafbff",
+                        marginTop: "12px",
+                      }}
+                    >
+                      <span>{productNames[id] || id}</span>
+                      <s-button
+                        variant="tertiary"
+                        onClick={() => setProductIds(productIds.filter((x) => x !== id))}
                       >
-                        <span>{productNames[id] || id}</span>
-                        <s-button
-                          variant="tertiary"
-                          onClick={() => setProductIds(productIds.filter((x) => x !== id))}
-                        >
-                          Remove
-                        </s-button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                        Remove
+                      </s-button>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-                <ProductPickerDialog
-                  open={pickerOpen}
-                  selectedIds={productIds}
-                  onConfirm={handlePickerConfirm}
-                  onCancel={() => setPickerOpen(false)}
-                />
-              </s-stack>
-            </s-section>
-          )}
+              <ProductPickerDialog
+                open={pickerOpen}
+                selectedIds={productIds}
+                onConfirm={handlePickerConfirm}
+                onCancel={() => setPickerOpen(false)}
+              />
+            </s-stack>
+          </s-section>
         </s-box>
 
         <s-box paddingBlockEnd="small">
@@ -384,14 +383,14 @@ export default function EditDiscountPage() {
               {entry.shopifyDiscountId && (
                 <s-banner tone="success">
                   <s-paragraph>
-                    ✅ Linked to Shopify Admin — changes will update the existing automatic discount.
+                    Linked to Shopify Admin - changes will update the existing automatic discount.
                   </s-paragraph>
                 </s-banner>
               )}
               {!entry.shopifyDiscountId && (
                 <s-banner tone="info">
                   <s-paragraph>
-                    ⏳ No Shopify discount linked yet. Saving will create one automatically.
+                    No Shopify discount linked yet. Saving will create one automatically.
                   </s-paragraph>
                 </s-banner>
               )}

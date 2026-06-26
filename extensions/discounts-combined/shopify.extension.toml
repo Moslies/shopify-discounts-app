@@ -1,14 +1,14 @@
 api_version = "unstable"
 
 [[extensions]]
-name = "t:name"
-handle = "discounts-allocator"
+name = "discounts-combined"
+handle = "discounts-combined"
+uid = "fa26cfa9-fe0d-4e02-bb90-18847976e28b386d675d"
 type = "function"
-uid = "46f8b751-0dfd-0f4f-6972-a9f6330bd7491c5b791d-0e4d-4e8d-9d8d-8d8d8d8d8d8d"
-description = "t:description"
+
 
   [[extensions.targeting]]
-  target = "purchase.order-discount.run"
+  target = "cart.lines.discounts.generate.run"
   input_query = "src/run.graphql"
   export = "run"
 

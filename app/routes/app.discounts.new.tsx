@@ -11,7 +11,6 @@ import {
   readConfig,
   writeConfig,
   findFunctionNode,
-  findProductFunctionNode,
   createShopifyDiscount,
   type DiscountEntry,
 } from "../lib/discount-helpers.server";
@@ -27,6 +26,7 @@ function generateId(): string {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
+  
   const formData = await request.formData();
 
   const title = formData.get("title") as string;
@@ -62,34 +62,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     ...(productIds.length > 0 ? { productIds } : {}),
   };
 
+  // Find the function node first
+  const funcNode = await findFunctionNode();
+  if (!funcNode) {
+    return { ok: false, errors: ["Discount function not found - deploy the app first"] };
+  }
+
   // Read current config
   const { config, ownerId } = await readConfig(admin);
-
-  // Try to create Shopify discount — route to the correct function per scope
-  const productFunc = newEntry.scope === "product" ? await findProductFunctionNode(admin) : null;
-
-  if (newEntry.scope === "product" && !productFunc) {
-    const orderFunc = await findFunctionNode(admin);
-    if (!orderFunc) {
-      return { ok: false, errors: ["Discount function not found — deploy the app first"] };
-    }
-    const result = await createShopifyDiscount(admin, orderFunc.id, { ...newEntry, scope: "order" });
-    if (result.discountId) {
-      newEntry.shopifyDiscountId = result.discountId;
-    } else if (result.error) {
-      return { ok: false, errors: [result.error] };
-    }
-  } else {
-    const funcNode = newEntry.scope === "product" ? productFunc : await findFunctionNode(admin);
-    if (!funcNode) {
-      return { ok: false, errors: ["Discount function not found — deploy the app first"] };
-    }
-    const result = await createShopifyDiscount(admin, funcNode.id, newEntry);
-    if (result.discountId) {
-      newEntry.shopifyDiscountId = result.discountId;
-    } else if (result.error) {
-      return { ok: false, errors: [result.error] };
-    }
+  // Create Shopify discount - combined function handles all scopes
+  const result = await createShopifyDiscount(admin, funcNode.id, newEntry);
+  if (result.discountId) {
+    newEntry.shopifyDiscountId = result.discountId;
+  } else if (result.error) {
+    return { ok: false, errors: [result.error] };
   }
 
   // Append to list
@@ -188,7 +174,7 @@ export default function NewDiscountPage() {
     <s-page heading="New Discount">
       <s-section>
         <s-button variant="tertiary" onClick={() => navigate("/app/discounts")}>
-          ← Back
+          Back
         </s-button>
       </s-section>
 
@@ -207,13 +193,12 @@ export default function NewDiscountPage() {
               <s-select
                 label="Discount Scope"
                 value={scope}
-                onChange={(e) => {
-                  setScope((e.target as HTMLSelectElement).value as "order" | "product");
-                  setProductIds([]);
-                }}
+                onChange={(e) =>
+                  setScope((e.target as HTMLSelectElement).value as "order" | "product")
+                }
               >
-                <s-option value="order">Order Discount — applies to the entire order</s-option>
-                <s-option value="product">Product Discount — applies to specific products</s-option>
+                <s-option value="order">Order Discount - applies to the entire order</s-option>
+                <s-option value="product">Product Discount - applies to specific products</s-option>
               </s-select>
 
               <s-select
@@ -244,9 +229,9 @@ export default function NewDiscountPage() {
                 <s-grid key={index} gridTemplateColumns="repeat(13, 1fr)" gap="base">
                     <s-grid-item gridColumn="span 4" gridRow="span 1">
                       <s-text-field
-                        label="Min Qty"
+                        label={scope === "order" ? "Min Amount ($)" : "Min Qty"}
                         value={String(tier.minQuantity)}
-                        placeholder="2"
+                        placeholder={scope === "order" ? "50" : "2"}
                         onInput={(e) =>
                           updateTier(index, "minQuantity", (e.target as HTMLInputElement).value)
                         }
@@ -292,54 +277,52 @@ export default function NewDiscountPage() {
         </s-box>
         <s-box paddingBlockEnd="small">
           {/* Section 3: Product Selection (optional) & Additional Settings */}
-          {scope === "product" && (
-            <s-section>
-              <s-stack direction="block" gap="base">
-                <s-text color="base">Link Products (optional)</s-text>
-                
-                <s-button variant="primary" onClick={() => setPickerOpen(true)}>
-                  {productIds.length > 0
-                    ? `Add / Remove Products (${productIds.length} selected)`
-                    : "Add Products"}
-                </s-button>
-                {productIds.length > 0 && (
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "12px" }}>
-                    {productIds.map((id) => { 
-                      return (
-                        <li
-                          key={id}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            border: "1px solid #dfe3eb",
-                            borderRadius: "12px",
-                            padding: "12px 16px",
-                            background: "#fafbff",
-                            marginTop: "12px",
-                          }}
+          <s-section>
+            <s-stack direction="block" gap="base">
+              <s-text color="base">Eligible Products (If none selected, applies to all products)</s-text>
+
+              <s-button variant="primary" onClick={() => setPickerOpen(true)}>
+                {productIds.length > 0
+                  ? `Add / Remove Products (${productIds.length} selected)`
+                  : "Add Products"}
+              </s-button>
+              {productIds.length > 0 && (
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "12px" }}>
+                  {productIds.map((id) => { 
+                    return (
+                      <li
+                        key={id}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          border: "1px solid #dfe3eb",
+                          borderRadius: "12px",
+                          padding: "12px 16px",
+                          background: "#fafbff",
+                          marginTop: "12px",
+                        }}
+                      >
+                        <span>{productNames[id] || id}</span>
+                        <s-button
+                          variant="tertiary"
+                          onClick={() => setProductIds(productIds.filter((x) => x !== id))}
                         >
-                          <span>{productNames[id] || id}</span>
-                          <s-button
-                            variant="tertiary"
-                            onClick={() => setProductIds(productIds.filter((x) => x !== id))}
-                          >
-                            Remove
-                          </s-button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-                <ProductPickerDialog
-                  open={pickerOpen}
-                  selectedIds={productIds}
-                  onConfirm={handlePickerConfirm}
-                  onCancel={() => setPickerOpen(false)}
-                />
-              </s-stack>
-            </s-section>
-          )}
+                          Remove
+                        </s-button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <ProductPickerDialog
+                open={pickerOpen}
+                selectedIds={productIds}
+                onConfirm={handlePickerConfirm}
+                onCancel={() => setPickerOpen(false)}
+              />
+            </s-stack>
+          </s-section>
         </s-box>
         <s-box paddingBlockEnd="small">
           {/* Section 4: Activation */}

@@ -6,9 +6,29 @@ schema {
 }
 
 """
+Only allow the field to be queried when targeting one of the specified targets.
+"""
+directive @restrictTarget(only: [String!]!) on FIELD_DEFINITION
+
+"""
 Scale the Functions resource limits based on the field's length.
 """
 directive @scaleLimits(rate: Float!) on FIELD_DEFINITION
+
+"""
+Requires that exactly one field must be supplied and that field must not be `null`.
+"""
+directive @oneOf on INPUT_OBJECT
+
+"""
+A discount code that is associated with a discount candidate.
+"""
+input AssociatedDiscountCode {
+  """
+  The discount code.
+  """
+  code: String!
+}
 
 """
 A custom property. Attributes are used to store additional information about a Shopify resource, such as
@@ -64,6 +84,13 @@ type BuyerIdentity {
   Used to manage and track purchases made by businesses rather than individual customers.
   """
   purchasingCompany: PurchasingCompany
+
+  """
+  Represents the [Shop User](https://help.shopify.com/en/manual/online-sales-channels/shop/sign-in-features)
+   corresponding to the customer within the shop, if the buyer is a Shop User. Can be used to request [Shop User
+   metafields](https://shopify.dev/docs/api/shop-user-custom-data).
+  """
+  shopUser: ShopUser
 }
 
 """
@@ -316,6 +343,27 @@ type CartDeliveryOption {
 }
 
 """
+The cart.delivery-options.discounts.generate.fetch target result. Refer to [network access](https://shopify.dev/apps/build/functions/input-output/network-access/graphql)
+for Shopify Functions.
+"""
+input CartDeliveryOptionsDiscountsGenerateFetchResult {
+  """
+  The attributes associated with an HTTP request.
+  """
+  request: HttpRequest
+}
+
+"""
+The cart.delivery-options.discounts.generate.run target result.
+"""
+input CartDeliveryOptionsDiscountsGenerateRunResult {
+  """
+  An ordered list of operations to generate delivery discounts, such as validating and applying discounts to the cart.
+  """
+  operations: [DeliveryOperation!]!
+}
+
+"""
 Information about an item in a cart that a customer intends to purchase. A cart line is an entry in the
 customer's cart that represents a single unit of a product variant. For example, if a customer adds two
 different sizes of the same t-shirt to their cart, then each size is represented as a separate cart line.
@@ -411,6 +459,38 @@ type CartLineCost {
 }
 
 """
+The condition for checking the minimum quantity of products across a group of cart lines.
+"""
+input CartLineMinimumQuantity {
+  """
+  Cart line IDs with a merchandise line price that's included to calculate the
+  minimum quantity purchased to receive the discount.
+  """
+  ids: [ID!]!
+
+  """
+  The minimum quantity of a cart line to be eligible for a discount candidate.
+  """
+  minimumQuantity: Int!
+}
+
+"""
+The condition for checking the minimum subtotal of products across a group of cart lines.
+"""
+input CartLineMinimumSubtotal {
+  """
+  Cart line IDs with a merchandise line price that's included to calculate the
+  minimum subtotal purchased to receive the discount.
+  """
+  ids: [ID!]!
+
+  """
+  The minimum subtotal amount of the cart line to be eligible for a discount candidate in the shop's currency.
+  """
+  minimumAmount: Decimal!
+}
+
+"""
 Represents the relationship between a cart line and its parent line.
 """
 type CartLineParentRelationship {
@@ -420,16 +500,92 @@ type CartLineParentRelationship {
   parent: CartLine!
 }
 
-type CartLineTarget {
+"""
+A cart line that is required for the discount candidate to be applicable. A cart line is an entry in the
+customer's cart that represents a single unit of a product variant. For example, if a customer adds two
+different sizes of the same t-shirt to their cart, then each size is represented as a separate cart line.
+"""
+input CartLinePrerequisite {
   """
-  The ID of the line to be discounted.
+  The ID of the prerequisite cart line.
   """
-  cartLineId: ID!
+  id: ID!
 
   """
-  The quantity of the items on this line to be discounted.
+  The number of line items that are required for the discount candidate to be applicable.
+
+  The value is validated against: > 0.
   """
   quantity: Int!
+}
+
+"""
+A method for applying a discount to a specific line item in the cart. A cart line is an entry in the
+customer's cart that represents a single unit of a product variant. For example, if a customer adds two
+different sizes of the same t-shirt to their cart, then each size is represented as a separate cart line.
+"""
+input CartLineTarget {
+  """
+  The ID of the targeted cart line.
+  """
+  id: ID!
+
+  """
+  The number of line items that are being discounted.
+  The default value is `null`, which represents the quantity of the matching line items.
+
+  The value is validated against: > 0.
+  """
+  quantity: Int
+}
+
+"""
+The cart.lines.discounts.generate.fetch target result. Refer to [network access](https://shopify.dev/apps/build/functions/input-output/network-access/graphql)
+for Shopify Functions.
+"""
+input CartLinesDiscountsGenerateFetchResult {
+  """
+  The HTTP request object.
+  """
+  request: HttpRequest
+}
+
+"""
+The cart.lines.discounts.generate.run target result.
+"""
+input CartLinesDiscountsGenerateRunResult {
+  """
+  The list of operations to apply discounts to the cart.
+  """
+  operations: [CartOperation!]!
+}
+
+"""
+The operations that can be performed to apply discounts to the cart.
+"""
+input CartOperation @oneOf {
+  """
+  An operation that selects which entered discount codes to accept. Use this to
+  validate discount codes from external systems.
+  """
+  enteredDiscountCodesAccept: EnteredDiscountCodesAcceptOperation
+
+  """
+  An operation that rejects entered discount codes with a custom message. Use
+  this to conditionally reject discount codes based on business logic. This
+  operation can only be used if the function is backed by an automatic discount.
+  """
+  enteredDiscountCodesReject: EnteredDiscountCodesRejectOperation
+
+  """
+  An operation that applies order discounts to a cart that share a selection strategy.
+  """
+  orderDiscountsAdd: OrderDiscountsAddOperation
+
+  """
+  An operation that applies product discounts to a cart that share a selection strategy.
+  """
+  productDiscountsAdd: ProductDiscountsAddOperation
 }
 
 """
@@ -605,6 +761,26 @@ type CompanyLocation implements HasMetafields {
   at which the company location was last modified.
   """
   updatedAt: DateTime!
+}
+
+"""
+The conditions that satisfy the discount candidate to be applied to a cart line.
+"""
+input Condition @oneOf {
+  """
+  The condition for checking the minimum quantity of products across a group of cart lines.
+  """
+  cartLineMinimumQuantity: CartLineMinimumQuantity
+
+  """
+  The condition for checking the minimum subtotal of products across a group of cart lines.
+  """
+  cartLineMinimumSubtotal: CartLineMinimumSubtotal
+
+  """
+  The condition for checking the minimum subtotal amount of the order.
+  """
+  orderMinimumSubtotal: OrderMinimumSubtotal
 }
 
 """
@@ -2862,6 +3038,117 @@ type DeliverableCartLine {
 }
 
 """
+The discount that's eligible to be applied to a delivery.
+"""
+input DeliveryDiscountCandidate {
+  """
+  An optional discount code associated with this discount candidate, for use
+  with automatic discounts. If a code discount is the function trigger, the
+  associated discount code will be overwritten by the triggering discount code.
+  """
+  associatedDiscountCode: AssociatedDiscountCode
+
+  """
+  A notification on the **Cart** page informs customers about available
+  discounts. If an automatic discount applies, the notification displays this
+  message, such as "Save 20% on all t-shirts." If a discount code is entered,
+  the notification displays the code instead.
+  """
+  message: String
+
+  """
+  The targets of the discount that are eligible to be applied to a delivery.
+  """
+  targets: [DeliveryDiscountCandidateTarget!]!
+
+  """
+  The value of the discount that's eligible to be applied to a delivery.
+  """
+  value: DeliveryDiscountCandidateValue!
+}
+
+"""
+The target of the eligible delivery discount.
+"""
+input DeliveryDiscountCandidateTarget @oneOf {
+  """
+  A method for applying a discount to a delivery group. Delivery groups streamline
+  fulfillment by organizing items that can be shipped together, based on the customer's shipping address.
+  For example, if a customer orders a t-shirt and a pair of shoes that can be shipped together, then the
+  items are included in the same delivery group.
+  """
+  deliveryGroup: DeliveryGroupTarget
+
+  """
+  A method for applying a discount to a delivery option within a delivery group.
+  Delivery options are the different ways that customers can choose to have their
+  orders shipped. Examples of delivery options include express shipping or standard shipping.
+  """
+  deliveryOption: DeliveryOptionTarget
+}
+
+"""
+The value of the eligible delivery discount.
+"""
+input DeliveryDiscountCandidateValue @oneOf {
+  """
+  A fixed amount value.
+  """
+  fixedAmount: FixedAmount
+
+  """
+  A percentage value.
+  """
+  percentage: Percentage
+}
+
+"""
+The strategy that's applied to the list of discounts that are eligible to be applied to a delivery.
+"""
+enum DeliveryDiscountSelectionStrategy {
+  """
+  Apply all discounts that are eligible to be applied to a delivery with
+  conditions that are satisfied. This doesn't override
+  discount combination or stacking rules.
+  """
+  ALL
+}
+
+"""
+Applies delivery discounts to a cart that share a method for determining which
+shipping and delivery discounts to apply when multiple discounts are eligible.
+"""
+input DeliveryDiscountsAddOperation {
+  """
+  The list of discounts that are eligible to be applied to a delivery.
+  """
+  candidates: [DeliveryDiscountCandidate!]!
+
+  """
+  The method for determining which shipping and delivery discounts to apply when
+  multiple discounts are eligible. For example, when the "ALL" strategy is
+  selected, every shipping and delivery discount that qualifies is applied to
+  the cart (for example, free shipping on orders over $50 and $5 off express
+  shipping). This controls how shipping and delivery discounts interact when
+  multiple conditions are satisfied simultaneously.
+  """
+  selectionStrategy: DeliveryDiscountSelectionStrategy!
+}
+
+"""
+A method for applying a discount to a delivery group. Delivery groups streamline
+fulfillment by organizing items that can be shipped together, based on the customer's shipping address.
+For example, if a customer orders a t-shirt and a pair of shoes that can be shipped together, then the
+items are included in the same delivery group.
+"""
+input DeliveryGroupTarget {
+  """
+  The ID of the target delivery group.
+  """
+  id: ID!
+}
+
+"""
 List of different delivery method types.
 """
 enum DeliveryMethod {
@@ -2896,31 +3183,54 @@ enum DeliveryMethod {
   SHIPPING
 }
 
+"""
+The operations to apply discounts to shipping and delivery charges in a
+customer's cart. These operations allow you to reduce the cost of shipping by
+applying percentage or fixed-amount discounts to specific delivery options (such
+as standard shipping and express shipping) or delivery groups (such as
+collections of delivery options).
+"""
+input DeliveryOperation @oneOf {
+  """
+  Applies delivery discounts to a cart that share a method for determining which
+  shipping and delivery discounts to apply when multiple discounts are eligible.
+  """
+  deliveryDiscountsAdd: DeliveryDiscountsAddOperation
+
+  """
+  An operation that selects which entered discount codes to accept. Use this to
+  validate discount codes from external systems.
+  """
+  enteredDiscountCodesAccept: EnteredDiscountCodesAcceptOperation
+
+  """
+  An operation that rejects entered discount codes with a custom message. Use
+  this to conditionally reject discount codes based on business logic. This
+  operation can only be used if the function is backed by an automatic discount.
+  """
+  enteredDiscountCodesReject: EnteredDiscountCodesRejectOperation
+}
+
+"""
+A method for applying a discount to a delivery option within a delivery group.
+Delivery options are the different ways that customers can choose to have their
+orders shipped. Examples of delivery options include express shipping or standard shipping.
+"""
+input DeliveryOptionTarget {
+  """
+  The handle of the target delivery option.
+  """
+  handle: Handle!
+}
+
+"""
+The discount that invoked the [Discount Function](https://shopify.dev/docs/apps/build/discounts#build-with-shopify-functions)).
+"""
 type Discount implements HasMetafields {
   """
-  The discount code, for code-based discounts.
+  The [discount classes](https://shopify.dev/docs/apps/build/discounts/#discount-classes) that the [discountNode](https://shopify.dev/docs/api/admin-graphql/latest/queries/discountNode) supports.
   """
-  code: String
-
-  """
-  The strategy to use when considering discounts proposals.
-  """
-  discountApplicationStrategy: DiscountApplicationStrategy!
-
-  """
-  The class of the discount.
-  """
-  discountClass: DiscountClass!
-
-  """
-  Proposals to evaluate as part of this discount.
-  """
-  discountProposals: [DiscountProposal!]!
-
-  """
-  The ID of the discount.
-  """
-  id: ID!
+  discountClasses: [DiscountClass!]!
 
   """
   A [custom field](https://shopify.dev/docs/apps/build/custom-data) that stores additional information
@@ -2944,11 +3254,6 @@ type Discount implements HasMetafields {
     """
     namespace: String
   ): Metafield
-
-  """
-  The discount title.
-  """
-  title: String!
 }
 
 """
@@ -3035,38 +3340,6 @@ enum DiscountApplicationAllocationMethod {
 }
 
 """
-The approach that determines how multiple discounts are evaluated and
-applied to a cart. You can apply all discounts with conditions that are met,
-apply a discount only to the first line item in a cart that meets conditions,
-or apply only the discount that offers a maximum price reduction.
-"""
-enum DiscountApplicationStrategy {
-  """
-  Apply all discounts with conditions that are met. For example, you can use the `ALL` strategy to apply a
-  20% discount on a t-shirt, a $5 discount on a pair of shoes, and a 10% discount on a hat. The total
-  discount would be the sum of all three discounts, which would be applied to the order total. This strategy
-  doesn't override [discount combination](https://help.shopify.com/manual/discounts/discount-combinations)
-  rules.
-  """
-  ALL
-
-  """
-  Only apply the discount to the first line item in a cart that meets conditions.
-  For example, you can use the `FIRST` strategy to apply a 20% discount to the first line item in a cart
-  and ensure no other discounts are applied.
-  """
-  FIRST
-
-  """
-  Only apply the discount that provides the greatest savings. For example, you can use the `MAXIMUM` strategy
-  to apply the higher of two discounts. If you have a 20% discount on a $30 t-shirt and a $5 discount on $40
-  shoes, then the 20% discount saves you $6 (20% of $30), while the $5 discount stays the same.
-  Since $6 is more than $5, the 20% discount on the t-shirt is applied.
-  """
-  MAXIMUM
-}
-
-"""
 The type of line on an order that the discount is applicable towards.
 """
 enum DiscountApplicationTarget {
@@ -3105,97 +3378,96 @@ enum DiscountApplicationTargetSelection {
 }
 
 """
-List of the classes of discounts.
+The [discount class](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
+that's used to control how discounts can be combined.
 """
 enum DiscountClass {
   """
-  A discount that applies to the order.
+  The discount is combined with an
+  [order discount](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
+  class.
   """
   ORDER
 
   """
-  A discount that applies to products.
+  The discount is combined with a
+  [product discount](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
+  class.
   """
   PRODUCT
+
+  """
+  The discount is combined with a
+  [shipping discount](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
+  class.
+  """
+  SHIPPING
 }
 
 """
-The input object for the Function.
+A discount code used by the buyer to add a discount to the cart.
 """
-type DiscountProposal {
+input DiscountCode {
   """
-  The handle of the discount proposal.
+  The discount code.
   """
-  handle: Handle!
-
-  """
-  The message for this proposal.
-  """
-  message: String
-
-  """
-  The line items to which the discount proposal applies.
-  """
-  targets: [CartLineTarget!]!
-
-  """
-  The value of the discount. The value can be a fixed amount, like $5 (5.0), or a percentage, such as 10% (0.1).
-  """
-  value: Value!
+  code: String!
 }
 
-input DisplayableError {
+"""
+A discount code entered by the customer.
+"""
+type EnteredDiscountCode {
   """
-  The ID of the discount that caused this violation.
+  The discount code.
   """
-  discountId: ID!
+  code: String!
 
   """
-  The error message in the user's locale.
+  Indicates whether the entered discount code can be rejected.
+
+  A discount code can't be rejected if it's associated with a discount that has already been applied to the cart.
   """
-  reason: String!
+  rejectable: Boolean!
+}
+
+"""
+An operation that selects which entered discount codes to accept. Use this to validate discount codes from external systems.
+"""
+input EnteredDiscountCodesAcceptOperation {
+  """
+  The list of discount codes to accept.
+  """
+  codes: [DiscountCode!]!
+}
+
+"""
+An operation that rejects entered discount codes with a custom message. Use this
+to conditionally reject discount codes based on business logic. This operation
+can only be used if the function is backed by an automatic discount.
+"""
+input EnteredDiscountCodesRejectOperation {
+  """
+  The list of discount codes to reject.
+  """
+  codes: [RejectedDiscountCode!]!
+
+  """
+  The custom message to display to the customer when the discount codes are rejected.
+  """
+  message: String!
 }
 
 """
 A fixed amount value.
 """
-type FixedAmount {
+input FixedAmount {
   """
   The fixed amount value of the discount, in the currency of the cart.
+
+  The amount must be greater than or equal to 0.
   """
   amount: Decimal!
-
-  """
-  Allocation method of the discount, will be allocated on each line if it's
-  true, else will be allocated across target lines.
-  """
-  appliesToEachItem: Boolean!
-}
-
-"""
-The output of the Function run target.
-The object contains a list of discounts that apply to each item in a cart.
-"""
-input FunctionRunResult {
-  """
-  A list of errors that display if a discount can't be applied to one or more
-  items in a cart. Errors lock checkout, and the customer has to remove the discount code to
-  proceed through checkout.
-
-  Shopify shows errors for only
-  [code discounts](https://shopify.dev/docs/api/admin-graphql/latest/objects/DiscountCodeNode).
-  Custom error messages aren't currently supported. If errors are returned with a custom reason,
-  then the error won't display and the discount won't be added.
-  """
-  displayableErrors: [DisplayableError!]
-
-  """
-  The list of discounts that are applied to each item in a cart.
-  It includes data such as the ID of the cart line associated with the discount,
-  the quantity of items that the discount applies to,
-  and how the discount is allocated to each item.
-  """
-  lineDiscounts: [LineDiscount!]
 }
 
 """
@@ -3251,6 +3523,146 @@ type HasTagResponse {
 }
 
 """
+The attributes associated with an HTTP request.
+"""
+input HttpRequest {
+  """
+  The HTTP request body as a plain string.
+  Use this field when the body isn't in JSON format.
+  """
+  body: String
+
+  """
+  The HTTP headers.
+  """
+  headers: [HttpRequestHeader!]!
+
+  """
+  The HTTP request body as a JSON object.
+  Use this field when the body's in JSON format, to reduce function instruction consumption
+  and to ensure the body's formatted in logs.
+  Don't use this field together with the `body` field. If both are provided, then the `body` field
+  will take precedence.
+  If this field is specified and no `Content-Type` header is included, then the header will
+  automatically be set to `application/json`.
+  """
+  jsonBody: JSON
+
+  """
+  The HTTP method.
+  """
+  method: HttpRequestMethod!
+
+  """
+  Policy attached to the HTTP request.
+  """
+  policy: HttpRequestPolicy!
+
+  """
+  The HTTP url (eg.: https://example.com). The scheme needs to be HTTPS.
+  """
+  url: URL!
+}
+
+"""
+The attributes associated with an HTTP request header.
+"""
+input HttpRequestHeader {
+  """
+  Header name.
+  """
+  name: String!
+
+  """
+  Header value.
+  """
+  value: String!
+}
+
+"""
+The HTTP request available methods.
+"""
+enum HttpRequestMethod {
+  """
+  Http GET.
+  """
+  GET
+
+  """
+  Http POST.
+  """
+  POST
+}
+
+"""
+The attributes associated with an HTTP request policy.
+"""
+input HttpRequestPolicy {
+  """
+  Read timeout in milliseconds.
+  """
+  readTimeoutMs: Int!
+}
+
+"""
+The attributes associated with an HTTP response.
+"""
+type HttpResponse {
+  """
+  The HTTP response body as a plain string.
+  Use this field when the body is not in JSON format.
+  """
+  body: String
+
+  """
+  An HTTP header.
+  """
+  header(
+    """
+    A case-insensitive header name.
+    """
+    name: String!
+  ): HttpResponseHeader
+
+  """
+  The HTTP headers.
+  """
+  headers: [HttpResponseHeader!]! @deprecated(reason: "Use `header` instead.")
+
+  """
+  The HTTP response body parsed as JSON.
+  If the body is valid JSON, it will be parsed and returned as a JSON object.
+  If parsing fails, then raw body is returned as a string.
+  Use this field when you expect the response to be JSON, or when you're dealing
+  with mixed response types, meaning both JSON and non-JSON.
+  Using this field reduces function instruction consumption and ensures that the data is formatted in logs.
+  To prevent increasing the function target input size unnecessarily, avoid querying
+  both `body` and `jsonBody` simultaneously.
+  """
+  jsonBody: JSON
+
+  """
+  The HTTP status code.
+  """
+  status: Int!
+}
+
+"""
+The attributes associated with an HTTP response header.
+"""
+type HttpResponseHeader {
+  """
+  Header name.
+  """
+  name: String!
+
+  """
+  Header value.
+  """
+  value: String!
+}
+
+"""
 Represents a unique identifier, often used to refetch an object.
 The ID type appears in a JSON response as a String, but it is not intended to be human-readable.
 
@@ -3269,15 +3681,29 @@ type Input {
   cart: Cart!
 
   """
-  The information about promotional offers that are applied to items in a cart,
-  such as the discount's name that displays to merchants in the
-  Shopify admin and to customers,
-  the [discount code](https://help.shopify.com/manual/discounts/discount-types/discount-codes),
-  the [discount class](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations),
-  and [metafields](https://shopify.dev/docs/apps/build/custom-data) that are associated
-  with discounts.
+  The discount node that owns the [Shopify
+  Function](https://shopify.dev/docs/apps/build/functions). Discounts are a way
+  for merchants to promote sales and special offers, or as customer loyalty
+  rewards. A single discount can be automatic or code-based, and can be applied
+  to a cart lines, orders, and delivery.
   """
-  discounts: [Discount!]
+  discount: Discount!
+
+  """
+  Discount codes entered by the buyer at checkout, excluding gift cards. For
+  cart.lines.discounts.generate.run and cart.delivery-options.discounts.generate.run targets, these
+  discount codes are validated to ensure they are not deleted, maintain an active status, and are eligible
+  for the current cart. For fetch targets, all entered discount codes are included, excluding gift cards.
+  """
+  enteredDiscountCodes: [EnteredDiscountCode!]!
+
+  """
+  The result of the fetch target. Refer to [network access](https://shopify.dev/apps/build/functions/input-output/network-access/graphql)
+  for Shopify Functions. This input is only available in the
+  `cart.lines.discounts.generate.run` and
+  `cart.delivery-options.discounts.generate.run` extension targets.
+  """
+  fetchResult: HttpResponse @restrictTarget(only: ["cart.lines.discounts.generate.run", "cart.delivery-options.discounts.generate.run"])
 
   """
   The regional and language settings that determine how the Function
@@ -3300,6 +3726,13 @@ type Input {
   setting and associated [metafields](https://shopify.dev/docs/apps/build/custom-data).
   """
   shop: Shop!
+
+  """
+  The discount code entered by a customer, which caused the [Discount Function](https://shopify.dev/docs/apps/build/discounts#build-with-shopify-functions) to run.
+  This input is only available in the `cart.lines.discounts.generate.run` and
+  `cart.delivery-options.discounts.generate.run` extension targets.
+  """
+  triggeringDiscountCode: String @restrictTarget(only: ["cart.lines.discounts.generate.run", "cart.delivery-options.discounts.generate.run"])
 }
 
 """
@@ -4040,23 +4473,6 @@ enum LanguageCode {
   ZU
 }
 
-input LineDiscount {
-  """
-  The output allocations for this line discount.
-  """
-  allocations: [OutputAllocations!]!
-
-  """
-  The ID of the cart line associated to this discount.
-  """
-  cartLineId: ID!
-
-  """
-  The quantity to which this line discount will apply.
-  """
-  quantity: Int!
-}
-
 """
 Local pickup settings associated with a location.
 """
@@ -4784,34 +5200,174 @@ The root mutation for the API.
 """
 type MutationRoot {
   """
-  Handles the Function result for the purchase.discounts-allocator.run target.
+  Handles the Function result for the cart.delivery-options.discounts.generate.fetch target.
   """
-  run(
+  cartDeliveryOptionsDiscountsGenerateFetch(
     """
     The result of the Function.
     """
-    result: FunctionRunResult!
+    result: CartDeliveryOptionsDiscountsGenerateFetchResult!
+  ): Void!
+
+  """
+  Handles the Function result for the cart.delivery-options.discounts.generate.run target.
+  """
+  cartDeliveryOptionsDiscountsGenerateRun(
+    """
+    The result of the Function.
+    """
+    result: CartDeliveryOptionsDiscountsGenerateRunResult!
+  ): Void!
+
+  """
+  Handles the Function result for the cart.lines.discounts.generate.fetch target.
+  """
+  cartLinesDiscountsGenerateFetch(
+    """
+    The result of the Function.
+    """
+    result: CartLinesDiscountsGenerateFetchResult!
+  ): Void!
+
+  """
+  Handles the Function result for the cart.lines.discounts.generate.run target.
+  """
+  cartLinesDiscountsGenerateRun(
+    """
+    The result of the Function.
+    """
+    result: CartLinesDiscountsGenerateRunResult!
   ): Void!
 }
 
-input OutputAllocations {
+"""
+A discount candidate to be applied to an eligible order.
+"""
+input OrderDiscountCandidate {
   """
-  The money amount that's allocated to a line based on the associated discount.
+  An optional discount code associated with this discount candidate, for use
+  with automatic discounts. If a code discount is the function trigger, the
+  associated discount code will be overwritten by the triggering discount code.
   """
-  amount: Decimal!
+  associatedDiscountCode: AssociatedDiscountCode
 
   """
-  The ID of the source discount proposal.
+  The conditions that must be satisfied for an order to be eligible for a discount candidate.
   """
-  discountProposalId: Handle!
+  conditions: [Condition!]
+
+  """
+  A notification on the **Cart** page informs customers about available
+  discounts. If an automatic discount applies, the notification displays this
+  message, such as "Save 20% on all t-shirts." If a discount code is entered,
+  the notification displays the code instead.
+  """
+  message: String
+
+  """
+  The targets of the order discount candidate.
+  """
+  targets: [OrderDiscountCandidateTarget!]!
+
+  """
+  The value of the order discount candidate.
+  """
+  value: OrderDiscountCandidateValue!
+}
+
+"""
+A target of an order to be eligible for a discount candidate.
+"""
+input OrderDiscountCandidateTarget @oneOf {
+  """
+  A method for applying a discount to the entire order subtotal. The subtotal is the total amount of the
+  order before any taxes, shipping fees, or discounts are applied. For example, if a customer places an order
+  for a t-shirt and a pair of shoes, then the subtotal is the sum of the prices of those items.
+  """
+  orderSubtotal: OrderSubtotalTarget
+}
+
+"""
+The value of the order discount candidate.
+"""
+input OrderDiscountCandidateValue @oneOf {
+  """
+  A fixed amount value.
+  """
+  fixedAmount: FixedAmount
+
+  """
+  A percentage value.
+  """
+  percentage: Percentage
+}
+
+"""
+The strategy that's applied to the list of order discount candidates.
+"""
+enum OrderDiscountSelectionStrategy {
+  """
+  Only apply the first order discount candidate with conditions that are satisfied.
+  """
+  FIRST
+
+  """
+  Only apply the order discount candidate that offers the maximum reduction.
+  """
+  MAXIMUM
+}
+
+"""
+An operation that applies order discounts to a cart that share a selection strategy.
+"""
+input OrderDiscountsAddOperation {
+  """
+  The list of discounts that can be applied to an order.
+  """
+  candidates: [OrderDiscountCandidate!]!
+
+  """
+  The strategy that's applied to the list of discounts.
+  """
+  selectionStrategy: OrderDiscountSelectionStrategy!
+}
+
+"""
+The condition for checking the minimum subtotal amount of the order.
+"""
+input OrderMinimumSubtotal {
+  """
+  Cart line IDs with a merchandise line price that's excluded to calculate the minimum subtotal amount of the order.
+  """
+  excludedCartLineIds: [ID!]!
+
+  """
+  The minimum subtotal amount of the order to be eligible for the discount in the shop's currency.
+  """
+  minimumAmount: Decimal!
+}
+
+"""
+A method for applying a discount to the entire order subtotal. The subtotal is the total amount of the
+order before any taxes, shipping fees, or discounts are applied. For example, if a customer places an order
+for a t-shirt and a pair of shoes, then the subtotal is the sum of the prices of those items.
+"""
+input OrderSubtotalTarget {
+  """
+  The list of excluded cart line IDs. These cart lines are excluded from the order
+  subtotal calculation when calculating the maximum value of the discount.
+  """
+  excludedCartLineIds: [ID!]!
 }
 
 """
 A percentage value.
 """
-type Percentage {
+input Percentage {
   """
   The percentage value.
+
+  The value is validated against: >= 0 and <= 100.
   """
   value: Decimal!
 }
@@ -4956,6 +5512,144 @@ type Product implements HasMetafields {
 }
 
 """
+The target and value of the discount to be applied to a cart line.
+"""
+input ProductDiscountCandidate {
+  """
+  An optional discount code associated with this discount candidate, for use
+  with automatic discounts. If a code discount is the function trigger, the
+  associated discount code will be overwritten by the triggering discount code.
+  """
+  associatedDiscountCode: AssociatedDiscountCode
+
+  """
+  A notification on the **Cart** page informs customers about available
+  discounts. If an automatic discount applies, the notification displays this
+  message, such as "Save 20% on all t-shirts." If a discount code is entered,
+  the notification displays the code instead.
+  """
+  message: String
+
+  """
+  The items required for the discount candidate to be applicable.
+  """
+  prerequisites: [ProductDiscountCandidatePrerequisite!]
+
+  """
+  The targets of the discount to be applied to a cart line.
+  """
+  targets: [ProductDiscountCandidateTarget!]!
+
+  """
+  The value of the discount to be applied to a cart line. For example, a fixed
+  amount of $5 off or percentage value of 20% off.
+  """
+  value: ProductDiscountCandidateValue!
+}
+
+"""
+The [fixed-amount](https://help.shopify.com/manual/international/pricing/discounts)
+value of the discount to be applied to a cart line. For example, if the cart
+total is $100 and the discount is $10, then the fixed amount is $10.
+"""
+input ProductDiscountCandidateFixedAmount {
+  """
+  The [fixed-amount](https://help.shopify.com/manual/international/pricing/discounts) value of the discount to be applied to a cart line, in the currency of the
+  cart. The amount must be greater than or equal to 0.
+  """
+  amount: Decimal!
+
+  """
+  Whether to apply the value of each eligible discount to each eligible cart line.
+
+  The default value is `false`, which causes the value to be applied once across the entitled items.
+  When the value is `true`, the value will be applied to each of the entitled items.
+  """
+  appliesToEachItem: Boolean = false
+}
+
+"""
+The items required for the discount candidate to be applicable.
+"""
+input ProductDiscountCandidatePrerequisite @oneOf {
+  """
+  A cart line that is required for the discount candidate to be applicable. A cart line is an entry in the
+  customer's cart that represents a single unit of a product variant. For example, if a customer adds two
+  different sizes of the same t-shirt to their cart, then each size is represented as a separate cart line.
+  """
+  cartLine: CartLinePrerequisite
+}
+
+"""
+Defines discount candidates, which are cart lines that may be eligible for
+potential discounts. Use discount candidates to identify items in a customer's
+cart that could receive discounts based on conditions in the selection strategy.
+
+When multiple cart lines share the same type and ID, the system treats them as a
+single target and combines their quantities. The combined quantity becomes null
+if any individual target has a `null` quantity.
+"""
+input ProductDiscountCandidateTarget @oneOf {
+  """
+  A method for applying a discount to a specific line item in the cart. A cart line is an entry in the
+  customer's cart that represents a single unit of a product variant. For example, if a customer adds two
+  different sizes of the same t-shirt to their cart, then each size is represented as a separate cart line.
+  """
+  cartLine: CartLineTarget
+}
+
+"""
+The value of the discount candidate to be applied to a cart line.
+"""
+input ProductDiscountCandidateValue @oneOf {
+  """
+  The [fixed-amount](https://help.shopify.com/manual/international/pricing/discounts) value of the discount to be applied to a cart line. For example, if the cart
+  total is $100 and the discount is $10, then the fixed amount is $10.
+  """
+  fixedAmount: ProductDiscountCandidateFixedAmount
+
+  """
+  A percentage value.
+  """
+  percentage: Percentage
+}
+
+"""
+The selection strategy that's applied to the list of discounts that are eligible for cart lines.
+"""
+enum ProductDiscountSelectionStrategy {
+  """
+  Apply all the discount candidates to eligible cart lines. This doesn't override discount combination or stacking rules.
+  """
+  ALL
+
+  """
+  Apply the first discount candidate to cart lines that satisfies conditions.
+  """
+  FIRST
+
+  """
+  Apply the discount to the cart line that offers the maximum reduction.
+  """
+  MAXIMUM
+}
+
+"""
+An operation that applies product discounts to a cart that share a selection strategy.
+"""
+input ProductDiscountsAddOperation {
+  """
+  The list of products that are eligible for the discount.
+  """
+  candidates: [ProductDiscountCandidate!]!
+
+  """
+  The strategy that's applied to the list of products that are eligible for the cart line discount.
+  """
+  selectionStrategy: ProductDiscountSelectionStrategy!
+}
+
+"""
 A specific version of a product that comes in more than one option, such as size or color. For example,
 if a merchant sells t-shirts with options for size and color, then a small, blue t-shirt would be one
 product variant and a large, blue t-shirt would be another.
@@ -4966,6 +5660,40 @@ type ProductVariant implements HasMetafields {
   for the product variant.
   """
   id: ID!
+
+  """
+  Whether the product variant is in any of the specified collections. The variant must be in at least one
+  collection from the list to return `true`. A variant is considered to be in a collection when the variant
+  itself is a member of the collection, or when its product is a member of the collection.
+
+  A collection is a group of products that can be displayed in online stores and other sales channels in
+  categories, which makes it easy for customers to find them. For example, an athletics store might create
+  different collections for running attire and accessories.
+  """
+  inAnyCollection(
+    """
+    A list of [globally-unique collection IDs](https://shopify.dev/docs/api/usage/gids)
+    to check membership against. For example, `gid://shopify/Collection/123`, `gid://shopify/Collection/456`.
+    """
+    ids: [ID!]! = []
+  ): Boolean!
+
+  """
+  Whether the product variant is in each of the specified collections. A variant is considered to be in a
+  collection when the variant itself is a member of the collection, or when its product is a member of the
+  collection.
+
+  A collection is a group of products that can be displayed in online stores and other sales channels in
+  categories, which makes it easy for customers to find them. For example, an athletics store might create
+  different collections for running attire and accessories.
+  """
+  inCollections(
+    """
+    A list of [globally-unique collection IDs](https://shopify.dev/docs/api/usage/gids)
+    to check membership against. For example, `gid://shopify/Collection/123`, `gid://shopify/Collection/456`.
+    """
+    ids: [ID!]! = []
+  ): [CollectionMembership!]!
 
   """
   A [custom field](https://shopify.dev/docs/apps/build/custom-data) that stores additional information
@@ -5047,6 +5775,16 @@ type PurchasingCompany {
   The company location associated to the order or draft order.
   """
   location: CompanyLocation!
+}
+
+"""
+A discount code to be rejected.
+"""
+input RejectedDiscountCode {
+  """
+  The discount code to reject.
+  """
+  code: String!
 }
 
 """
@@ -5192,6 +5930,34 @@ type Shop implements HasMetafields {
 }
 
 """
+Represents information about the buyer that is interacting with the cart.
+"""
+type ShopUser implements HasMetafields {
+  """
+  A [custom field](https://shopify.dev/docs/apps/build/custom-data) that stores additional information
+  about a Shopify resource, such as products, orders, and
+  [many more](https://shopify.dev/docs/api/admin-graphql/latest/enums/MetafieldOwnerType).
+  Using [metafields with Shopify Functions](https://shopify.dev/docs/apps/build/functions/input-output/metafields-for-input-queries)
+  enables you to customize the checkout experience.
+  """
+  metafield(
+    """
+    The unique identifier for the metafield within its namespace. A metafield is composed of a
+    namespace and a key, in the format `namespace.key`.
+    """
+    key: String!
+
+    """
+    A category that organizes a group of metafields. Namespaces are used to prevent naming conflicts
+    between different apps or different parts of the same app. If omitted, then the
+    [app-reserved namespace](https://shopify.dev/docs/apps/build/custom-data/ownership)
+    is used.
+    """
+    namespace: String
+  ): Metafield
+}
+
+"""
 A subset of the [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format that
 includes the time but not the date or timezone which is determined from context.
 For example, "05:43:21".
@@ -5199,9 +5965,13 @@ For example, "05:43:21".
 scalar TimeWithoutTimezone
 
 """
-The value of the discount. The value can be a fixed amount, like $5 (5.0), or a percentage, such as 10% (0.1).
+Represents an [RFC 3986](https://datatracker.ietf.org/doc/html/rfc3986) and
+[RFC 3987](https://datatracker.ietf.org/doc/html/rfc3987)-compliant URI string.
+
+For example, `"https://example.myshopify.com"` is a valid URL. It includes a scheme (`https`) and a host
+(`example.myshopify.com`).
 """
-union Value = FixedAmount | Percentage
+scalar URL
 
 """
 A void type that can be used to return a null value from a mutation.

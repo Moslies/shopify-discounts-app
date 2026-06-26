@@ -7,9 +7,9 @@ export interface ConfirmDialogProps {
   title: string;
   /** Dialog message body */
   message: string;
-  /** Label for the confirm (danger) button — default "Delete" */
+  /** Label for the confirm (danger) button; default "Delete". */
   confirmLabel?: string;
-  /** Label for the cancel button — default "Cancel" */
+  /** Label for the cancel button; default "Cancel". */
   cancelLabel?: string;
   /** Called when the user confirms */
   onConfirm: () => void;
@@ -75,7 +75,7 @@ export default function ConfirmDialog({
       }}
       onKeyDown={handleKeyDown}
     >
-      {/* Backdrop — native button to satisfy a11y interactive-element rule */}
+      {/* Backdrop button satisfies the a11y interactive-element rule. */}
       <button
         type="button"
         aria-label="Close"
