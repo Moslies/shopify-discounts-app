@@ -214,9 +214,11 @@ export async function getLinkedDiscounts(
   });
 }
 
-function discountClassesForScope(): string[] {
-  // Combined function handles both product and order discounts.
-  return ["PRODUCT", "ORDER"];
+function discountClassesForScope(scope?: string): string[] {
+  // Each node only declares its own discount class so Shopify's combine rules
+  // don't block cross-type stacking (e.g. product + order).
+  if (scope === "product") return ["PRODUCT"];
+  return ["ORDER"];
 }
 
 function combinesForScope(scope: string) {
@@ -255,7 +257,7 @@ export async function createShopifyDiscount(
           discount: {
             title: entry.title || `Discount (${entry.type} ${entry.value})`,
             functionHandle: functionNodeId,
-            discountClasses: discountClassesForScope(),
+            discountClasses: discountClassesForScope(scope),
             combinesWith: combinesForScope(scope),
             startsAt: new Date(Date.now() - 60000).toISOString(),
           },
@@ -306,7 +308,7 @@ export async function updateShopifyDiscount(
           discount: {
             title: entry.title || `Discount (${entry.type} ${entry.value})`,
             functionHandle: functionNodeId,
-            discountClasses: discountClassesForScope(),
+            discountClasses: discountClassesForScope(entry.scope),
             combinesWith: combinesForScope(entry.scope),
             startsAt: new Date(Date.now() - 60000).toISOString(),
           },
