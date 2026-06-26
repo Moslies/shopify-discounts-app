@@ -76,10 +76,24 @@ export default function Index() {
         </s-stack>
       </s-section>
 
-      <s-section slot="aside" heading="小贴士">
-        <s-paragraph>
-          开始探索你的应用，你会发现更多强大的功能！
-        </s-paragraph>
+      <s-section slot="aside" heading="Discount Rules">
+        <s-unordered-list>
+          <s-list-item>
+            <s-text color="base">
+              每个产品展示的是所有适用折扣的阶梯组合，同一阶梯展示折扣力度最大的。
+            </s-text>
+          </s-list-item>
+          <s-list-item>
+            <s-text color="base">
+              没有绑定任何产品的折扣，将对所有产品生效。
+            </s-text>
+          </s-list-item>
+          <s-list-item>
+            <s-text color="base">
+              订单折扣与产品阶梯计价同时作用。
+            </s-text>
+          </s-list-item>
+        </s-unordered-list>
       </s-section>
     </s-page>
   );

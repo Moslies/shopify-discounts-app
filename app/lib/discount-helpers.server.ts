@@ -54,6 +54,10 @@ export interface DiscountConfig {
   discounts: DiscountEntry[];
 }
 
+const CONFIG_NAMESPACE = "discounts-allocator";
+const SHOP_CONFIG_KEY = "function-configuration";
+const DISCOUNT_CONFIG_KEY = "discount-configuration";
+
 // ---------- Read config from metafield ----------
 
 export async function readConfig(admin: any): Promise<{
@@ -65,7 +69,7 @@ export async function readConfig(admin: any): Promise<{
     query {
       shop {
         id
-        metafield(namespace: "discounts-allocator", key: "function-configuration") {
+        metafield(namespace: "${CONFIG_NAMESPACE}", key: "${SHOP_CONFIG_KEY}") {
           value
         }
       }
@@ -109,11 +113,50 @@ export async function writeConfig(
       variables: {
         metafields: [
           {
-            namespace: "discounts-allocator",
-            key: "function-configuration",
+            namespace: CONFIG_NAMESPACE,
+            key: SHOP_CONFIG_KEY,
             type: "json",
             value: JSON.stringify(config),
             ownerId,
+          },
+        ],
+      },
+    }
+  );
+  const json = await resp.json();
+  const errors = json.data?.metafieldsSet?.userErrors || [];
+  if (errors.length > 0) return errors[0].message;
+
+  for (const entry of config.discounts) {
+    if (!entry.shopifyDiscountId) continue;
+    const err = await writeDiscountConfig(admin, entry.shopifyDiscountId, entry);
+    if (err) return err;
+  }
+
+  return null;
+}
+
+async function writeDiscountConfig(
+  admin: any,
+  discountId: string,
+  entry: DiscountEntry
+): Promise<string | null> {
+  const resp = await admin.graphql(
+    `#graphql
+    mutation setDiscountConfig($metafields: [MetafieldsSetInput!]!) {
+      metafieldsSet(metafields: $metafields) {
+        userErrors { field message }
+      }
+    }`,
+    {
+      variables: {
+        metafields: [
+          {
+            namespace: CONFIG_NAMESPACE,
+            key: DISCOUNT_CONFIG_KEY,
+            type: "json",
+            value: JSON.stringify({ discount: entry }),
+            ownerId: discountId,
           },
         ],
       },

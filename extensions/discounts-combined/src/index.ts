@@ -19,9 +19,14 @@ interface Shop {
   metafield?: { value: string } | null;
 }
 
+interface Discount {
+  metafield?: { value: string } | null;
+}
+
 interface RunInput {
   cart: Cart;
   shop: Shop;
+  discount: Discount;
 }
 
 // ---- Config types (shared) ----
@@ -47,6 +52,7 @@ interface DiscountEntry {
 interface DiscountConfig {
   rules?: DiscountEntry[];
   discounts?: DiscountEntry[];
+  discount?: DiscountEntry;
 }
 
 // ---- Output types for unified Discount Function API ----
@@ -131,18 +137,35 @@ function estimateDiscountAmount(
   return groupQuantity * parseFloat(tierValue);
 }
 
+function totalForProducts(lines: CartLine[], productIds: string[]): number {
+  return lines
+    .filter((line) => {
+      const productId = line.merchandise?.product?.id;
+      return productId ? productIds.includes(productId) : false;
+    })
+    .reduce((sum, line) => sum + parseFloat(line.cost?.totalAmount?.amount || "0"), 0);
+}
+
+function entriesFromConfig(config: DiscountConfig | DiscountEntry): DiscountEntry[] {
+  const maybeConfig = config as DiscountConfig;
+  if (Array.isArray(maybeConfig.discounts)) return maybeConfig.discounts;
+  if (Array.isArray(maybeConfig.rules)) return maybeConfig.rules;
+  if (maybeConfig.discount) return [maybeConfig.discount];
+  return [config as DiscountEntry];
+}
+
 // ---- Function Entry ----
 
 export function run(input: RunInput): FunctionRunResult {
   const noDiscount: FunctionRunResult = { operations: [] };
 
-  const configJson = input.shop.metafield?.value;
+  const configJson = input.discount.metafield?.value || input.shop.metafield?.value;
   if (!configJson) return noDiscount;
 
-  let config: DiscountConfig;
+  let config: DiscountConfig | DiscountEntry;
   try { config = JSON.parse(configJson); } catch { return noDiscount; }
 
-  const entries = config.discounts || config.rules || [];
+  const entries = entriesFromConfig(config);
   const productEntries = entries.filter((e) => e.active && e.scope === "product");
   const orderEntries = entries.filter((e) => e.active && e.scope !== "product");
 
@@ -230,7 +253,11 @@ export function run(input: RunInput): FunctionRunResult {
     const orderCandidates: OrderCandidate[] = [];
 
     for (const entry of orderEntries) {
-      const tier = resolveBestTier(effectiveSubtotal, entry);
+      const productIds = entry.productIds || [];
+      const thresholdAmount = productIds.length > 0
+        ? totalForProducts(input.cart.lines, productIds)
+        : effectiveSubtotal;
+      const tier = resolveBestTier(thresholdAmount, entry);
       if (!tier) continue;
 
       const value: OrderCandidateValue = entry.type === "percentage"

@@ -198,27 +198,6 @@ export default function DiscountListPage() {
         </s-section>
       )}
 
-      {/* Preview */}
-      {/* <s-section slot="aside" heading="Data Preview">
-        <s-box
-          padding="base"
-          borderWidth="base"
-          borderRadius="base"
-          background="subdued"
-        >
-          <pre
-            style={{
-              margin: 0,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              fontSize: "12px",
-            }}
-          >
-            <code>{JSON.stringify({ discounts: local }, null, 2)}</code>
-          </pre>
-        </s-box>
-      </s-section> */}
-
       <ConfirmDialog
         open={deleteTarget !== null}
         title="Delete discount"

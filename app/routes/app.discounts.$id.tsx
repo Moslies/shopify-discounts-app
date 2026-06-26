@@ -241,10 +241,9 @@ export default function EditDiscountPage() {
               <s-select
                 label="Discount Scope"
                 value={scope}
-                onChange={(e) => {
-                  setScope((e.target as HTMLSelectElement).value as "order" | "product");
-                  setProductIds([]);
-                }}
+                onChange={(e) =>
+                  setScope((e.target as HTMLSelectElement).value as "order" | "product")
+                }
               >
                 <s-option value="order">Order Discount - applies to the entire order</s-option>
                 <s-option value="product">Product Discount - applies to specific products</s-option>
@@ -328,54 +327,52 @@ export default function EditDiscountPage() {
 
         <s-box paddingBlockEnd="small">
           {/* Section 3: Product Selection (optional) */}
-          {scope === "product" && (
-            <s-section>
-              <s-stack direction="block" gap="base">
-                <s-text color="base">Link Products (optional)</s-text>
+          <s-section>
+            <s-stack direction="block" gap="base">
+              <s-text color="base">Eligible Products (optional)</s-text>
 
-                <s-button variant="primary" onClick={() => setPickerOpen(true)}>
-                  {productIds.length > 0
-                    ? `Add / Remove Products (${productIds.length} selected)`
-                    : "Add Products"}
-                </s-button>
+              <s-button variant="primary" onClick={() => setPickerOpen(true)}>
+                {productIds.length > 0
+                  ? `Add / Remove Products (${productIds.length} selected)`
+                  : "Add Products"}
+              </s-button>
 
-                {productIds.length > 0 && (
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "12px" }}>
-                    {productIds.map((id) => (
-                      <li
-                        key={id}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          border: "1px solid #dfe3eb",
-                          borderRadius: "12px",
-                          padding: "12px 16px",
-                          background: "#fafbff",
-                          marginTop: "12px",
-                        }}
+              {productIds.length > 0 && (
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "12px" }}>
+                  {productIds.map((id) => (
+                    <li
+                      key={id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        border: "1px solid #dfe3eb",
+                        borderRadius: "12px",
+                        padding: "12px 16px",
+                        background: "#fafbff",
+                        marginTop: "12px",
+                      }}
+                    >
+                      <span>{productNames[id] || id}</span>
+                      <s-button
+                        variant="tertiary"
+                        onClick={() => setProductIds(productIds.filter((x) => x !== id))}
                       >
-                        <span>{productNames[id] || id}</span>
-                        <s-button
-                          variant="tertiary"
-                          onClick={() => setProductIds(productIds.filter((x) => x !== id))}
-                        >
-                          Remove
-                        </s-button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                        Remove
+                      </s-button>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-                <ProductPickerDialog
-                  open={pickerOpen}
-                  selectedIds={productIds}
-                  onConfirm={handlePickerConfirm}
-                  onCancel={() => setPickerOpen(false)}
-                />
-              </s-stack>
-            </s-section>
-          )}
+              <ProductPickerDialog
+                open={pickerOpen}
+                selectedIds={productIds}
+                onConfirm={handlePickerConfirm}
+                onCancel={() => setPickerOpen(false)}
+              />
+            </s-stack>
+          </s-section>
         </s-box>
 
         <s-box paddingBlockEnd="small">

@@ -1,16 +1,53 @@
 {% comment %} bundle-selector.liquid {% endcomment %}
 {% assign bundle_config = shop.metafields["discounts-allocator"]["function-configuration"] %}
 {% assign tiers_json = '[]' %}
-
 {% if bundle_config %}
   {% assign config = bundle_config.value %}
+  {% assign product_gid = 'gid://shopify/Product/' | append: product.id %}
+  {% comment %} Collect all tiers from every applicable discount into one flat JSON array {% endcomment %}
+  {% assign all_tiers_items = '' %}
+
   {% for discount in config.discounts %}
-    {% assign product_gid = 'gid://shopify/Product/' | append: product.id %}
-    {% if discount.productIds contains product_gid and discount.active %}
-      {% assign tiers_json = discount.tiers | json %}
-      {% break %}
+    {% if discount.active and discount.scope contains 'product' %}
+
+      {% comment %} Check if this discount applies to the current product {% endcomment %}
+      {% assign matches_current = false %}
+      {% if discount.productIds == blank or discount.productIds.size == 0 %}
+        {% comment %} Empty productIds = applicable to ALL products {% endcomment %}
+        {% assign matches_current = true %}
+      {% elsif discount.productIds contains product_gid %}
+        {% assign matches_current = true %}
+      {% endif %}
+
+      {% if matches_current %}
+        {% if discount.tiers != blank and discount.tiers.size > 0 %}
+          {% comment %} Collect all tiers from this discount {% endcomment %}
+          {% for tier in discount.tiers %}
+            {% assign tier_entry = tier | json %}
+            {% if all_tiers_items != '' %}
+              {% assign all_tiers_items = all_tiers_items | append: ',' | append: tier_entry %}
+            {% else %}
+              {% assign all_tiers_items = tier_entry %}
+            {% endif %}
+          {% endfor %}
+        {% elsif discount.value != blank and discount.minQuantity != blank %}
+          {% comment %} Fallback: convert single discount to a tier entry {% endcomment %}
+          {% assign fallback_tier = '{"minQuantity":' | append: discount.minQuantity | append: ',"value":"' | append: discount.value | append: '"}' %}
+          {% if all_tiers_items != '' %}
+            {% assign all_tiers_items = all_tiers_items | append: ',' | append: fallback_tier %}
+          {% else %}
+            {% assign all_tiers_items = fallback_tier %}
+          {% endif %}
+        {% endif %}
+      {% endif %}
     {% endif %}
   {% endfor %}
+
+  {% if all_tiers_items != '' %}
+    {% assign tiers_json = '[' | append: all_tiers_items | append: ']' %}
+  {% else %}
+    {% assign tiers_json = '[]' %}
+  {% endif %}
 {% endif %}
 
 {% if product.variants.size == 1 %}
@@ -284,6 +321,19 @@ option:disabled {
   const tierContainer = document.getElementById('bundle-tier-options');
   const variantSelect = container.querySelector('.bundle-single-select');
 
+  /** Merge tiers from multiple discounts: deduplicate by minQuantity keeping the highest value, then sort ascending */
+  function mergeTiers(rawTiers) {
+    const map = new Map();
+    rawTiers.forEach(tier => {
+      const qty = tier.minQuantity;
+      const val = parseFloat(tier.value);
+      if (!map.has(qty) || val > parseFloat(map.get(qty).value)) {
+        map.set(qty, { ...tier });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.minQuantity - b.minQuantity);
+  }
+
   function getSelectPrice(select) {
     const selected = select.options[select.selectedIndex];
     return parseInt(selected.dataset.price || '0', 10);
@@ -421,7 +471,8 @@ option:disabled {
 
     const tierNames = ['', 'Single', 'Duo', 'Trio', 'Quad'];
     const popularIndex = (popular_indexs - 2); // 第二个阶梯标记为 Most Popular
-    tiers.forEach((tier, index) => {
+    const mergedTiers = mergeTiers(tiers);
+    mergedTiers.forEach((tier, index) => {
       const qty = tier.minQuantity;
       const discountPct = parseFloat(tier.value);
       const basePrice = getSelectPrice(variantSelect);

@@ -23,4 +23,9 @@ query RunInput {
       value
     }
   }
+  discount {
+    metafield(namespace: "discounts-allocator", key: "discount-configuration") {
+      value
+    }
+  }
 }
