@@ -127,7 +127,7 @@ function estimateDiscountAmount(
   if (type === "percentage") {
     return groupTotal * (parseFloat(tierValue) / 100);
   }
-  // fixed_amount — appliesToEachItem: true so per-unit
+  // fixed_amount uses appliesToEachItem: true, so it is per unit.
   return groupQuantity * parseFloat(tierValue);
 }
 

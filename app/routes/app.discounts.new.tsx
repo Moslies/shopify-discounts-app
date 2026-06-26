@@ -65,12 +65,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   // Find the function node first
   const funcNode = await findFunctionNode();
   if (!funcNode) {
-    return { ok: false, errors: ["Discount function not found — deploy the app first"] };
+    return { ok: false, errors: ["Discount function not found - deploy the app first"] };
   }
 
   // Read current config
   const { config, ownerId } = await readConfig(admin);
-  // Create Shopify discount — combined function handles all scopes
+  // Create Shopify discount - combined function handles all scopes
   const result = await createShopifyDiscount(admin, funcNode.id, newEntry);
   if (result.discountId) {
     newEntry.shopifyDiscountId = result.discountId;
@@ -174,7 +174,7 @@ export default function NewDiscountPage() {
     <s-page heading="New Discount">
       <s-section>
         <s-button variant="tertiary" onClick={() => navigate("/app/discounts")}>
-          ← Back
+          Back
         </s-button>
       </s-section>
 
@@ -198,8 +198,8 @@ export default function NewDiscountPage() {
                   setProductIds([]);
                 }}
               >
-                <s-option value="order">Order Discount — applies to the entire order</s-option>
-                <s-option value="product">Product Discount — applies to specific products</s-option>
+                <s-option value="order">Order Discount - applies to the entire order</s-option>
+                <s-option value="product">Product Discount - applies to specific products</s-option>
               </s-select>
 
               <s-select

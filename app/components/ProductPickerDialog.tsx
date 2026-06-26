@@ -107,7 +107,7 @@ export default function ProductPickerDialog({
       }}
       onKeyDown={handleKeyDown}
     >
-      {/* Backdrop — native button to satisfy a11y interactive-element rule */}
+      {/* Backdrop button satisfies the a11y interactive-element rule. */}
       <button
         type="button"
         aria-label="Close"

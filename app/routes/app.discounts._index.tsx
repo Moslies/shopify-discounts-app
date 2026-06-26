@@ -23,7 +23,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 // ----------------------------------------------------------------
-// Action — delete
+// Action - delete
 // ----------------------------------------------------------------
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -44,7 +44,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const err = await writeConfig(admin, config, ownerId);
   if (err) return { ok: false, errors: [err] };
 
-  // Also delete from Shopify if linked
+  // Also delete from Shopify if linked.
   if (shopifyId) {
     const delErr = await deleteShopifyDiscount(admin, shopifyId);
     if (delErr) {
@@ -66,11 +66,11 @@ export default function DiscountListPage() {
   const navigate = useNavigate();
   const [local, setLocal] = useState(discounts);
   const [deleteTarget, setDeleteTarget] = useState<DiscountEntry | null>(null);
+
   useEffect(() => {
     setLocal(discounts);
   }, [discounts]);
 
-  // Toast from delete fetcher
   useEffect(() => {
     if (fetcher.data?.ok && fetcher.state === "idle") {
       shopify.toast.show("Discount deleted");
@@ -79,10 +79,6 @@ export default function DiscountListPage() {
     }
   }, [fetcher.data, fetcher.state, shopify]);
 
-/**
- * 处理删除折扣条目的函数
- * @param entry - 要删除的折扣条目对象，包含id、title等属性
- */
   const handleDelete = (entry: DiscountEntry) => {
     setDeleteTarget(entry);
   };
@@ -106,9 +102,8 @@ export default function DiscountListPage() {
   };
 
   const handleEdit = (entry: DiscountEntry) => {
-    console.log(entry);
-    navigate(`/app/discounts/${entry.id}`)
-  }
+    navigate(`/app/discounts/${entry.id}`);
+  };
 
   return (
     <s-page heading="Discount Rules">
@@ -120,7 +115,6 @@ export default function DiscountListPage() {
         Clean Up Orphans
       </s-button>
 
-      {/* Empty state */}
       {local.length === 0 ? (
         <s-banner>
           <s-paragraph>
@@ -164,7 +158,7 @@ export default function DiscountListPage() {
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       <s-text color="subdued">
-                        {entry.scope === "product" ? "📦 Product" : "🛒 Order"}
+                        {entry.scope === "product" ? "Product" : "Order"}
                       </s-text>
                     </td>
                     <td style={{ padding: "10px 12px" }}>
@@ -175,13 +169,13 @@ export default function DiscountListPage() {
                     <td style={{ padding: "10px 12px" }}>
                       <s-text color="subdued">
                         {entry.tiers && entry.tiers.length > 1
-                          ? `${entry.tiers.length} tiers (${entry.tiers.map(t => t.minQuantity).join("/")})`
+                          ? `${entry.tiers.length} tiers (${entry.tiers.map((t) => t.minQuantity).join("/")})`
                           : `min ${entry.minQuantity} item${entry.minQuantity > 1 ? "s" : ""}`}
                       </s-text>
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       <s-text color="subdued">
-                        {entry.shopifyDiscountId ? entry.active ? "✅ Active" : "⏸️ Paused" : "⏳ Not linked"}
+                        {entry.shopifyDiscountId ? entry.active ? "Active" : "Paused" : "Not linked"}
                       </s-text>
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "right", whiteSpace: "nowrap" }}>

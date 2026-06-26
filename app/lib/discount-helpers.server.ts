@@ -2,11 +2,10 @@
 // Shared server-side helpers for discount management
 // ----------------------------------------------------------------
 
-
 export interface DiscountTier {
   minQuantity: number;
   value: string;
-  /** 每级阶梯独立的显示文案，为空则 fallback 到 DiscountEntry.title */
+  /** Optional per-tier display message. */
   message?: string;
 }
 
@@ -14,23 +13,22 @@ export interface DiscountEntry {
   id: string;
   title: string;
   type: "percentage" | "fixed_amount";
-  /** 折扣作用范围: "order" = 订单减价, "product" = 产品减价 */
+  /** "order" applies to the order subtotal; "product" applies to cart lines. */
   scope: "order" | "product";
   value: string;
   minQuantity: number;
   message?: string;
   active: boolean;
   shopifyDiscountId?: string | null;
-  /** 商品折扣绑定的商品 GID 列表，为空则适用于所有商品 */
+  /** Product GIDs for product discounts; empty means all products. */
   productIds?: string[];
-  /** 多阶梯折扣规则，为空则使用 value+minQuantity 作为默认规则 */
+  /** Tiered discount rules; empty falls back to value + minQuantity. */
   tiers?: DiscountTier[];
 }
 
 /**
- * 根据购买数量选择最优的折扣阶梯
- * 1. 有 tiers 且不为空 → 选择满足条件的最高阶梯
- * 2. 否则使用默认的 value + minQuantity（向后兼容）
+ * Select the highest qualifying tier.
+ * Falls back to value + minQuantity for older entries without tiers.
  */
 export function resolveBestTier(
   totalQuantity: number,
@@ -84,7 +82,8 @@ export async function readConfig(admin: any): Promise<{
       config = { discounts: p.discounts ?? p.rules ?? [] };
     } catch {}
   }
-  // 兼容无 scope 的旧数据，默认订单减价
+
+  // Backfill old entries that predate scope.
   for (const d of config.discounts) {
     if (!d.scope) (d as any).scope = "order";
   }
@@ -130,10 +129,9 @@ export async function writeConfig(
 export const FUNCTION_HANDLE = "discounts-combined";
 
 export async function findFunctionNode(): Promise<{ id: string } | null> {
-  // Combined function uses handle, not UUID — return handle string directly
+  // Combined function uses handle, not UUID; return handle string directly.
   return { id: FUNCTION_HANDLE };
 }
-
 
 // ---------- Get linked Shopify discounts ----------
 
@@ -164,7 +162,7 @@ export async function getLinkedDiscounts(
   );
   const json = await resp.json();
   const nodes = json.data?.discountNodes?.nodes || [];
-  // Match by functionHandle or functionId (either handle string or UUID)
+  // Match by functionHandle or functionId (either handle string or UUID).
   return nodes.filter((n: any) => {
     if (n.discount?.__typename !== "DiscountAutomaticApp") return false;
     const handle = n.discount?.appDiscountType?.functionHandle || "";
@@ -174,7 +172,7 @@ export async function getLinkedDiscounts(
 }
 
 function discountClassesForScope(): string[] {
-  // Combined function handles both product and order discounts
+  // Combined function handles both product and order discounts.
   return ["PRODUCT", "ORDER"];
 }
 
@@ -303,7 +301,6 @@ export async function deleteShopifyDiscount(
     );
     const json = await resp.json();
 
-    // Check for GraphQL-level errors first
     if (json.errors) {
       const messages = (Array.isArray(json.errors) ? json.errors : [json.errors])
         .map((e: any) => e.message || String(e))
@@ -311,14 +308,11 @@ export async function deleteShopifyDiscount(
       return `GraphQL error: ${messages}`;
     }
 
-    // Check for application-level errors
     const userErrors = json.data?.discountAutomaticDelete?.userErrors || [];
     if (userErrors.length > 0) {
       return userErrors.map((e: any) => e.message).join("; ");
     }
 
-    // Wait for Shopify's monorail telemetry + cache invalidation to complete
-    // so the next query returns fresh data
     await sleep(2000);
 
     return null;

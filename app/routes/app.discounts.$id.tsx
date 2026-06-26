@@ -106,16 +106,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   // Find the function node
   const funcNode = await findFunctionNode();
   if (!funcNode) {
-    return { ok: false, errors: ["Discount function not found — deploy the app first"] };
+    return { ok: false, errors: ["Discount function not found - deploy the app first"] };
   }
   const funcId = funcNode.id;
 
   if (updated.shopifyDiscountId) {
-    await updateShopifyDiscount(admin, updated, funcId);
+    const updateErr = await updateShopifyDiscount(admin, updated, funcId);
+    if (updateErr) {
+      return { ok: false, errors: [`Failed to update Shopify discount: ${updateErr}`] };
+    }
   } else if (updated.active) {
     const result = await createShopifyDiscount(admin, funcId, updated);
     if (result.discountId) {
       updated.shopifyDiscountId = result.discountId;
+    } else if (result.error) {
+      return { ok: false, errors: [`Failed to create Shopify discount: ${result.error}`] };
     }
   }
 
@@ -217,7 +222,7 @@ export default function EditDiscountPage() {
     <s-page heading={`Edit: ${entry.title || "Untitled"}`}>
       <s-section>
         <s-button variant="tertiary" onClick={() => navigate("/app/discounts")}>
-          ← Back
+          Back
         </s-button>
       </s-section>
 
@@ -241,8 +246,8 @@ export default function EditDiscountPage() {
                   setProductIds([]);
                 }}
               >
-                <s-option value="order">Order Discount — applies to the entire order</s-option>
-                <s-option value="product">Product Discount — applies to specific products</s-option>
+                <s-option value="order">Order Discount - applies to the entire order</s-option>
+                <s-option value="product">Product Discount - applies to specific products</s-option>
               </s-select>
 
               <s-select
@@ -381,14 +386,14 @@ export default function EditDiscountPage() {
               {entry.shopifyDiscountId && (
                 <s-banner tone="success">
                   <s-paragraph>
-                    ✅ Linked to Shopify Admin — changes will update the existing automatic discount.
+                    Linked to Shopify Admin - changes will update the existing automatic discount.
                   </s-paragraph>
                 </s-banner>
               )}
               {!entry.shopifyDiscountId && (
                 <s-banner tone="info">
                   <s-paragraph>
-                    ⏳ No Shopify discount linked yet. Saving will create one automatically.
+                    No Shopify discount linked yet. Saving will create one automatically.
                   </s-paragraph>
                 </s-banner>
               )}
