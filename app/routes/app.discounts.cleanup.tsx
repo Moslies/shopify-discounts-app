@@ -11,7 +11,6 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import {
   readConfig,
   findFunctionNode,
-  findProductFunctionNode,
   getLinkedDiscounts,
   deleteShopifyDiscount,
 } from "../lib/discount-helpers.server";
@@ -38,10 +37,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       .map((d) => d.shopifyDiscountId!)
   );
 
-  // 2. Get function nodes (both order and product)
-  const orderFunc = await findFunctionNode(admin);
-  const productFunc = await findProductFunctionNode(admin);
-  const funcIds = [orderFunc, productFunc].filter(Boolean).map((f) => f!.id);
+  // 2. Get function node (combined handles all scopes)
+  const funcNode = await findFunctionNode();
+  const funcIds = funcNode ? [funcNode.id] : [];
 
   if (funcIds.length === 0) {
     return { orphans: [], allLinked: [], error: "Discount function not found — deploy the app first." };

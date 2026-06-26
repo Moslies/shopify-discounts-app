@@ -2,11 +2,6 @@
 // Shared server-side helpers for discount management
 // ----------------------------------------------------------------
 
-export const FUNCTION_UUID =
-  "46f8b751-0dfd-0f4f-6972-a9f6330bd7491c5b791d-0e4d-4e8d-9d8d-8d8d8d8d8d8d";
-
-export const PRODUCT_FUNCTION_UUID =
-  "46f8b751-0dfd-0f4f-6972-a9f6330bd7492a6b791d-1e4d-5e8d-8d8d-7d7d7d7d7d7d";
 
 export interface DiscountTier {
   minQuantity: number;
@@ -132,35 +127,13 @@ export async function writeConfig(
 
 // ---------- Find function nodes ----------
 
-export async function findFunctionNode(
-  admin: any,
-  uuid?: string
-): Promise<{ id: string } | null> {
-  const targetUuid = uuid || FUNCTION_UUID;
-  const resp = await admin.graphql(
-    `#graphql
-    query { shopifyFunctions(first: 10) { nodes { id title } } }`
-  );
-  const json = await resp.json();
-  const nodes = json.data?.shopifyFunctions?.nodes || [];
-  return (
-    nodes.find((n: any) => n.id?.endsWith(targetUuid) || n.title === "discounts-allocator") || null
-  );
+export const FUNCTION_HANDLE = "discounts-combined";
+
+export async function findFunctionNode(): Promise<{ id: string } | null> {
+  // Combined function uses handle, not UUID — return handle string directly
+  return { id: FUNCTION_HANDLE };
 }
 
-export async function findProductFunctionNode(
-  admin: any
-): Promise<{ id: string } | null> {
-  const resp = await admin.graphql(
-    `#graphql
-    query { shopifyFunctions(first: 10) { nodes { id title } } }`
-  );
-  const json = await resp.json();
-  const nodes = json.data?.shopifyFunctions?.nodes || [];
-  return (
-    nodes.find((n: any) => n.id?.endsWith(PRODUCT_FUNCTION_UUID) || n.title === "discounts-product") || null
-  );
-}
 
 // ---------- Get linked Shopify discounts ----------
 
@@ -182,7 +155,7 @@ export async function getLinkedDiscounts(
               title
               status
               discountClass
-              appDiscountType { functionId }
+              appDiscountType { functionId functionHandle }
             }
           }
         }
@@ -191,15 +164,18 @@ export async function getLinkedDiscounts(
   );
   const json = await resp.json();
   const nodes = json.data?.discountNodes?.nodes || [];
-  return nodes.filter(
-    (n: any) =>
-      n.discount?.__typename === "DiscountAutomaticApp" &&
-      ids.includes(n.discount?.appDiscountType?.functionId)
-  );
+  // Match by functionHandle or functionId (either handle string or UUID)
+  return nodes.filter((n: any) => {
+    if (n.discount?.__typename !== "DiscountAutomaticApp") return false;
+    const handle = n.discount?.appDiscountType?.functionHandle || "";
+    const funcId = n.discount?.appDiscountType?.functionId || "";
+    return ids.some((id: string) => handle === id || funcId.endsWith(id) || funcId === id);
+  });
 }
 
-function discountClassesForScope(scope: string): string[] {
-  return scope === "product" ? ["PRODUCT"] : ["ORDER"];
+function discountClassesForScope(): string[] {
+  // Combined function handles both product and order discounts
+  return ["PRODUCT", "ORDER"];
 }
 
 function combinesForScope(scope: string) {
@@ -237,8 +213,8 @@ export async function createShopifyDiscount(
         variables: {
           discount: {
             title: entry.title || `Discount (${entry.type} ${entry.value})`,
-            functionId: functionNodeId,
-            discountClasses: discountClassesForScope(scope),
+            functionHandle: functionNodeId,
+            discountClasses: discountClassesForScope(),
             combinesWith: combinesForScope(scope),
             startsAt: new Date(Date.now() - 60000).toISOString(),
           },
@@ -288,8 +264,8 @@ export async function updateShopifyDiscount(
           id: entry.shopifyDiscountId,
           discount: {
             title: entry.title || `Discount (${entry.type} ${entry.value})`,
-            functionId: functionNodeId,
-            discountClasses: discountClassesForScope(entry.scope),
+            functionHandle: functionNodeId,
+            discountClasses: discountClassesForScope(),
             combinesWith: combinesForScope(entry.scope),
             startsAt: new Date(Date.now() - 60000).toISOString(),
           },

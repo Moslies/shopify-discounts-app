@@ -12,7 +12,6 @@ import {
   readConfig,
   writeConfig,
   findFunctionNode,
-  findProductFunctionNode,
   updateShopifyDiscount,
   createShopifyDiscount,
   type DiscountEntry,
@@ -104,19 +103,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     ...(productIds.length > 0 ? { productIds } : { productIds: undefined }),
   };
 
-  // Sync Shopify discount — route to the correct function per scope
-  const orderFunc = await findFunctionNode(admin);
-  const productFunc = await findProductFunctionNode(admin);
-  const productFuncAvailable = !!(updated.scope === "product" && productFunc);
-  const funcId = productFuncAvailable ? productFunc!.id : orderFunc?.id;
-  const shopifyEntry: DiscountEntry = productFuncAvailable
-    ? updated
-    : { ...updated, scope: "order" };
+  // Find the function node
+  const funcNode = await findFunctionNode();
+  if (!funcNode) {
+    return { ok: false, errors: ["Discount function not found — deploy the app first"] };
+  }
+  const funcId = funcNode.id;
 
   if (updated.shopifyDiscountId) {
-    await updateShopifyDiscount(admin, shopifyEntry, funcId || "");
-  } else if (funcId && updated.active) {
-    const result = await createShopifyDiscount(admin, funcId, shopifyEntry);
+    await updateShopifyDiscount(admin, updated, funcId);
+  } else if (updated.active) {
+    const result = await createShopifyDiscount(admin, funcId, updated);
     if (result.discountId) {
       updated.shopifyDiscountId = result.discountId;
     }
