@@ -636,7 +636,7 @@ window.fetch = async function(url, options = {}) {
       newFormData.append('utf8', body.get('utf8'));
       newFormData.append('product-id', body.get('product-id'));
       newFormData.append('section-id', body.get('section-id'));
-      newFormData.append('sections',   body.get('sections'));
+      newFormData.append('sections', body.get('sections'));
 
       // ✅ 追加你的 bundle items
       myBundleItems.forEach((item, i) => {
@@ -646,6 +646,9 @@ window.fetch = async function(url, options = {}) {
           `items[${i}][properties][_yx_bundles]`,
           item.properties._yx_bundles
         );
+        if(body.get('selling_plan')) {
+          newFormData.append(`items[${i}][id]`, body.get('selling_plan'));
+        }
       });
 
       return originalFetch(url, { ...options, body: newFormData });
