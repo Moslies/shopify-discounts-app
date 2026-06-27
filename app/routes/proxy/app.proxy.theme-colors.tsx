@@ -52,22 +52,6 @@ export const loader = async ({ request }: { request: Request }) => {
   // 去掉 /* */ 注释再解析
   const cleanContent = fileContent.replace(/\/\*[\s\S]*?\*\//g, "").trim();
   const content = JSON.parse(cleanContent);
-
-  // 取激活的 color scheme（默认用 scheme-1）
-  const activeSchemeKey = content.current.badge_sale_color_scheme ?? "scheme-1";
-  const activeScheme = content.current.color_schemes?.[activeSchemeKey]?.settings
-    ?? content.current.color_schemes?.["scheme-1"]?.settings
-    ?? {};
-
-  // 提取颜色字段
-  const colors = Object.fromEntries(
-    Object.entries(activeScheme).filter(
-      ([, v]) =>
-        typeof v === "string" &&
-        (v.startsWith("#") || v.startsWith("rgb") || v.startsWith("rgba"))
-    )
-  );
-
-  return Response.json({ colors });
+  return Response.json({ current: content.current });
 
 };
