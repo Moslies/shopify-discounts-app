@@ -1,113 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import type {
-  ActionFunctionArgs,
-  HeadersFunction,
-  LoaderFunctionArgs,
-} from "react-router";
+import type { HeadersFunction } from "react-router";
 import { useLoaderData, useFetcher, useNavigate } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import {
-  readConfig,
-  findFunctionNode,
-  getLinkedDiscounts,
-  deleteShopifyDiscount,
-} from "../lib/discount-helpers.server";
 
-// ----------------------------------------------------------------
-// Loader
-// ----------------------------------------------------------------
-
-interface OrphanDiscount {
-  discountId: string;
-  title: string;
-  status: string;
-  discountClass: string;
-}
-
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-
-  // 1. Get local discounts
-  const { config } = await readConfig(admin);
-  const localShopifyIds = new Set(
-    config.discounts
-      .filter((d) => d.shopifyDiscountId)
-      .map((d) => d.shopifyDiscountId!)
-  );
-
-  // 2. Get function node (combined handles all scopes)
-  const funcNode = await findFunctionNode();
-  const funcIds = funcNode ? [funcNode.id] : [];
-
-  if (funcIds.length === 0) {
-    return { orphans: [], allLinked: [], error: "Discount function not found - deploy the app first." };
-  }
-
-  // 3. Get all Shopify discounts linked to either function
-  const linked = await getLinkedDiscounts(admin, funcIds);
-
-  // 4. Build allLinked with discountClass for debugging
-  const allLinked = linked.map((n: any) => ({
-    discountId: n.discount?.discountId || "",
-    title: n.discount?.title || "Untitled",
-    status: n.discount?.status || "unknown",
-    discountClass: n.discount?.discountClass || "unknown",
-    functionId: n.discount?.appDiscountType?.functionId || "",
-  }));
-
-  // 5. Find orphans: exist in Shopify but not in local config
-  const orphans: OrphanDiscount[] = linked
-    .filter((n: any) => {
-      const sid = n.discount?.discountId;
-      return sid && !localShopifyIds.has(sid);
-    })
-    .map((n: any) => ({
-      discountId: n.discount.discountId,
-      title: n.discount.title || "Untitled",
-      status: n.discount.status || "unknown",
-      discountClass: n.discount?.discountClass || "unknown",
-    }));
-
-  return { orphans, allLinked, error: null };
-};
-
-// ----------------------------------------------------------------
-// Action - batch delete
-// ----------------------------------------------------------------
-
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const formData = await request.formData();
-
-  const idsJson = formData.get("discountIds") as string;
-  if (!idsJson) {
-    return { ok: false, errors: ["No discount IDs provided"] };
-  }
-
-  const ids: string[] = JSON.parse(idsJson);
-  const results: { id: string; ok: boolean; error?: string }[] = [];
-
-  for (const id of ids) {
-    const err = await deleteShopifyDiscount(admin, id);
-    results.push({ id, ok: !err, error: err || undefined });
-  }
-
-  const failures = results.filter((r) => !r.ok);
-  if (failures.length > 0) {
-    return {
-      ok: false,
-      errors: failures.map((f) => `${f.id}: ${f.error}`),
-    };
-  }
-
-  return {
-    ok: true,
-    type: "cleaned",
-    deletedCount: results.length,
-  };
-};
+import { loader } from "./loader.server";
+export { loader };
+import { action } from "./action.server";
+export { action };
 
 // ----------------------------------------------------------------
 // Component

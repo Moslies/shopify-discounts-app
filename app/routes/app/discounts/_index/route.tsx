@@ -1,59 +1,15 @@
 import { useEffect, useState } from "react";
-import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
+import type { HeadersFunction } from "react-router";
 import { useLoaderData, useFetcher, useNavigate } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import {
-  readConfig,
-  deleteShopifyDiscount,
-  writeConfig,
-  type DiscountEntry,
-} from "../lib/discount-helpers.server";
-import ConfirmDialog from "../components/ConfirmDialog";
+import { type DiscountEntry } from "@/lib/discount-helpers.server";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
-// ----------------------------------------------------------------
-// Loader
-// ----------------------------------------------------------------
-
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const { config } = await readConfig(admin);
-  return { discounts: config.discounts };
-};
-
-// ----------------------------------------------------------------
-// Action - delete
-// ----------------------------------------------------------------
-
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const formData = await request.formData();
-  const actionType = formData.get("_action") as string;
-
-  if (actionType !== "delete") {
-    return { ok: false, errors: ["Unknown action"] };
-  }
-
-  const discountId = formData.get("discountId") as string;
-  const shopifyId = formData.get("shopifyDiscountId") as string | null;
-
-  const { config, ownerId } = await readConfig(admin);
-  config.discounts = config.discounts.filter((d) => d.id !== discountId);
-
-  const err = await writeConfig(admin, config, ownerId);
-  if (err) return { ok: false, errors: [err] };
-
-  // Also delete from Shopify if linked.
-  if (shopifyId) {
-    const delErr = await deleteShopifyDiscount(admin, shopifyId);
-    if (delErr) {
-      return { ok: false, errors: [`Deleted locally, but failed to remove from Shopify: ${delErr}`] };
-    }
-  }
-
-  return { ok: true, type: "deleted" };
-};
+import { loader } from "./loader.server";
+export { loader };
+import { action } from "./action.server";
+export { action };
 
 // ----------------------------------------------------------------
 // Component
