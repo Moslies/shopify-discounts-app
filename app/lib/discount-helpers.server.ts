@@ -7,6 +7,8 @@ export interface DiscountTier {
   value: string;
   /** Optional per-tier display message. */
   message?: string;
+  /** Discount type — inherited from parent DiscountEntry during render. */
+  type?: "percentage" | "fixed_amount";
 }
 
 export interface DiscountEntry {
