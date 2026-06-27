@@ -63,11 +63,11 @@
       );
     }
 
-    // 老主题：平铺颜色字段
+    // 老主题：colors_ 前缀平铺字段（Dawn）
     if (Object.keys(colors).length === 0) {
       colors = Object.fromEntries(
-        Object.entries(current).filter(([, v]) =>
-          typeof v === "string" && (v.startsWith("#") || v.startsWith("rgb"))
+        Object.entries(current).filter(([k, v]) =>
+          k.startsWith("colors_") && typeof v === "string"
         )
       );
     }
