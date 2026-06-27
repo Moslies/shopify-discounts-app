@@ -647,7 +647,7 @@ window.fetch = async function(url, options = {}) {
           item.properties._yx_bundles
         );
         if(body.get('selling_plan')) {
-          newFormData.append(`items[${i}][id]`, body.get('selling_plan'));
+          newFormData.append(`items[${i}][selling_plan]`, body.get('selling_plan'));
         }
       });
 
