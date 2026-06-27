@@ -154,6 +154,106 @@ function entriesFromConfig(config: DiscountConfig | DiscountEntry): DiscountEntr
   return [config as DiscountEntry];
 }
 
+// ---- Compute product discount candidates & estimated discount ----
+
+function computeProductDiscounts(
+  cartLines: CartLine[],
+  entries: DiscountEntry[],
+  currencyCode: string
+): { candidates: ProductCandidate[]; estimatedDiscount: number } {
+  const candidates: ProductCandidate[] = [];
+  let estimatedDiscount = 0;
+
+  for (const entry of entries) {
+    const productIds = entry.productIds || [];
+    const eligibleLines = productIds.length === 0
+      ? cartLines
+      : cartLines.filter((line) => {
+          const pid = line.merchandise?.product?.id;
+          return pid ? productIds.includes(pid) : false;
+        });
+
+    if (eligibleLines.length === 0) continue;
+
+    // Group by product
+    const groups = new Map<string, { lines: CartLine[]; total: number; qty: number }>();
+
+    const isUnbound = productIds.length === 0;
+    if (isUnbound) {
+      const total = eligibleLines.reduce((s, l) => s + parseFloat(l.cost?.totalAmount?.amount || "0"), 0);
+      const qty = eligibleLines.reduce((s, l) => s + l.quantity, 0);
+      groups.set("__all__", { lines: eligibleLines, total, qty });
+    } else {
+      for (const line of eligibleLines) {
+        const pid = line.merchandise?.product?.id || "__unknown__";
+        if (!groups.has(pid)) groups.set(pid, { lines: [], total: 0, qty: 0 });
+        const g = groups.get(pid)!;
+        g.lines.push(line);
+        g.total += parseFloat(line.cost?.totalAmount?.amount || "0");
+        g.qty += line.quantity;
+      }
+    }
+
+    for (const group of groups.values()) {
+      const tier = resolveBestTier(group.qty, entry);
+      if (!tier) continue;
+
+      const targets: CartLineTarget[] = group.lines
+        .filter((l) => l.quantity > 0)
+        .map((l) => ({ cartLine: { id: l.id, quantity: l.quantity } }));
+
+      if (targets.length === 0) continue;
+
+      const value: ProductCandidateValue = entry.type === "percentage"
+        ? { percentage: { value: tier.value } }
+        : { fixedAmount: { amount: tier.value, appliesToEachItem: true } };
+
+      candidates.push({
+        message: tier.message || `Save ${tier.value}${entry.type === "percentage" ? "%" : ` ${currencyCode}`}`,
+        targets,
+        value,
+      });
+
+      estimatedDiscount += estimateDiscountAmount(
+        entry.type, tier.value, group.total, group.qty
+      );
+    }
+  }
+
+  return { candidates, estimatedDiscount };
+}
+
+/** Merge product entries from the shop metafield into the node-scoped entries, so
+ *  the order node can estimate the product discount amount for effectiveSubtotal. */
+function allProductEntries(input: RunInput): DiscountEntry[] {
+  const seen = new Set<string>();
+  const result: DiscountEntry[] = [];
+
+  // Entries already visible to this node
+  const nodeJson = input.discount.metafield?.value;
+  if (nodeJson) {
+    try {
+      const nodeEntries = entriesFromConfig(JSON.parse(nodeJson)).filter(
+        (e) => e.active && e.scope === "product"
+      );
+      for (const e of nodeEntries) { seen.add(e.id); result.push(e); }
+    } catch {}
+  }
+
+  // Product entries from the shop metafield that this node hasn't seen
+  const shopJson = input.shop.metafield?.value;
+  if (shopJson) {
+    try {
+      const shopEntries = entriesFromConfig(JSON.parse(shopJson)).filter(
+        (e) => e.active && e.scope === "product" && !seen.has(e.id)
+      );
+      result.push(...shopEntries);
+    } catch {}
+  }
+
+  return result;
+}
+
 // ---- Function Entry ----
 
 export function run(input: RunInput): FunctionRunResult {
@@ -169,93 +269,46 @@ export function run(input: RunInput): FunctionRunResult {
   const productEntries = entries.filter((e) => e.active && e.scope === "product");
   const orderEntries = entries.filter((e) => e.active && e.scope !== "product");
 
+  const cartLines = input.cart.lines;
   const currencyCode = input.cart.cost?.totalAmount?.currencyCode || "";
   const operations: Operation[] = [];
-  let totalEstimatedProductDiscount = 0;
 
   // ---- Process product discounts ----
 
-  if (productEntries.length > 0) {
-    const productCandidates: ProductCandidate[] = [];
+  const { candidates: productCandidates, estimatedDiscount: totalEstimatedProductDiscount } =
+    computeProductDiscounts(cartLines, productEntries, currencyCode);
 
-    for (const entry of productEntries) {
-      const productIds = entry.productIds || [];
-      const eligibleLines = productIds.length === 0
-        ? input.cart.lines
-        : input.cart.lines.filter((line) => {
-            const pid = line.merchandise?.product?.id;
-            return pid ? productIds.includes(pid) : false;
-          });
-
-      if (eligibleLines.length === 0) continue;
-
-      // Group by product
-      const groups = new Map<string, { lines: CartLine[]; total: number; qty: number }>();
-
-      const isUnbound = productIds.length === 0;
-      if (isUnbound) {
-        const total = eligibleLines.reduce((s, l) => s + parseFloat(l.cost?.totalAmount?.amount || "0"), 0);
-        const qty = eligibleLines.reduce((s, l) => s + l.quantity, 0);
-        groups.set("__all__", { lines: eligibleLines, total, qty });
-      } else {
-        for (const line of eligibleLines) {
-          const pid = line.merchandise?.product?.id || "__unknown__";
-          if (!groups.has(pid)) groups.set(pid, { lines: [], total: 0, qty: 0 });
-          const g = groups.get(pid)!;
-          g.lines.push(line);
-          g.total += parseFloat(line.cost?.totalAmount?.amount || "0");
-          g.qty += line.quantity;
-        }
-      }
-
-      for (const group of groups.values()) {
-        const tier = resolveBestTier(group.qty, entry);
-        if (!tier) continue;
-
-        // Build cart line targets for this group
-        const targets: CartLineTarget[] = group.lines
-          .filter((l) => l.quantity > 0)
-          .map((l) => ({ cartLine: { id: l.id, quantity: l.quantity } }));
-
-        if (targets.length === 0) continue;
-
-        const value: ProductCandidateValue = entry.type === "percentage"
-          ? { percentage: { value: tier.value } }
-          : { fixedAmount: { amount: tier.value, appliesToEachItem: true } };
-
-        productCandidates.push({
-          message: tier.message || `Save ${tier.value}${entry.type === "percentage" ? "%" : ` ${currencyCode}`}`,
-          targets,
-          value,
-        });
-
-        totalEstimatedProductDiscount += estimateDiscountAmount(
-          entry.type, tier.value, group.total, group.qty
-        );
-      }
-    }
-
-    if (productCandidates.length > 0) {
-      operations.push({
-        productDiscountsAdd: {
-          candidates: productCandidates,
-          selectionStrategy: "ALL",
-        },
-      });
-    }
+  if (productCandidates.length > 0) {
+    operations.push({
+      productDiscountsAdd: {
+        candidates: productCandidates,
+        selectionStrategy: "ALL",
+      },
+    });
   }
 
   // ---- Process order discounts ----
 
   if (orderEntries.length > 0) {
     const rawSubtotal = parseFloat(input.cart.cost?.subtotalAmount?.amount || "0");
-    const effectiveSubtotal = Math.max(0, rawSubtotal - totalEstimatedProductDiscount);
+
+    // If this node didn't see product entries (e.g. it's the order node running
+    // independently), re-estimate the product discount from all known entries
+    // so effectiveSubtotal correctly reflects already-applied product discounts.
+    let effectiveProductDiscount = totalEstimatedProductDiscount;
+    if (totalEstimatedProductDiscount === 0) {
+      effectiveProductDiscount = computeProductDiscounts(
+        cartLines, allProductEntries(input), currencyCode
+      ).estimatedDiscount;
+    }
+
+    const effectiveSubtotal = Math.max(0, rawSubtotal - effectiveProductDiscount);
     const orderCandidates: OrderCandidate[] = [];
 
     for (const entry of orderEntries) {
       const productIds = entry.productIds || [];
       const thresholdAmount = productIds.length > 0
-        ? totalForProducts(input.cart.lines, productIds)
+        ? totalForProducts(cartLines, productIds)
         : effectiveSubtotal;
       const tier = resolveBestTier(thresholdAmount, entry);
       if (!tier) continue;
