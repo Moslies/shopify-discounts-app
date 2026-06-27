@@ -27,7 +27,6 @@ export const loader = async ({ request }: { request: Request }) => {
   `);
 
   const result = await response.json();
-    console.log('result', result);
   const activeTheme = result.data?.themes?.edges?.find(
     ({ node }: any) => node.role === "MAIN"
   );
