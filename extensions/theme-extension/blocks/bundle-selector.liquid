@@ -52,6 +52,7 @@
     });
     const { current } = await res.json();
     console.log(1, current);
+    let colors = {};
     // 新主题：color_schemes 结构
     if (current.color_schemes) {
       const schemeKey = Object.keys(current.color_schemes)[0];
