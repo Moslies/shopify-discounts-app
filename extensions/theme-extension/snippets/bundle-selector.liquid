@@ -533,7 +533,7 @@ option:disabled {
                 <span>${name}</span>
                 <span class="bundle-save-badge">SAVE ${formatMoney(savedAmount)}</span>
               </div>
-              <div class="bundle-desc">${discountType === 'fixed_amount' ? `Save ${formatMoney(discountValue * 100)} off` : `You save ${discountValue}%`}</div>
+              <div class="bundle-desc">${discountType === 'fixed_amount' ? `Save ${formatMoney(discountValue * 100)} off each` : `save ${discountValue}% off`}</div>
             </div>
           </div>
           <div class="bundle-variant" style="--variant-height: ${variantFlag ? (qty * 38 + 28 + 'px') : 0}; --variant-qty: ${qty * 0.05 + 0.1}s;">
