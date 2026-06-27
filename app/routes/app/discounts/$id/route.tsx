@@ -1,138 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
-import type {
-  ActionFunctionArgs,
-  HeadersFunction,
-  LoaderFunctionArgs,
-} from "react-router";
+import type { HeadersFunction } from "react-router";
 import { useFetcher, useLoaderData, useNavigate } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import {
-  readConfig,
-  writeConfig,
-  findFunctionNode,
-  updateShopifyDiscount,
-  createShopifyDiscount,
-  type DiscountEntry,
-} from "../lib/discount-helpers.server";
-import ProductPickerDialog from "../components/ProductPickerDialog";
+import ProductPickerDialog from "@/components/ProductPickerDialog";
 
-// ----------------------------------------------------------------
-// Loader
-// ----------------------------------------------------------------
-
-export const loader = async ({ params, request }: LoaderFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const { config } = await readConfig(admin);
-
-  const entry = config.discounts.find((d) => d.id === params.id);
-  if (!entry) {
-    throw new Response("Discount not found", { status: 404 });
-  }
-
-  // Fetch product names for pre-selected products
-  const productMap: Record<string, string> = {};
-  if (entry.productIds?.length) {
-    const resp = await admin.graphql(
-      `#graphql
-      query getProducts($ids: [ID!]!) {
-        nodes(ids: $ids) {
-          ... on Product { id title }
-        }
-      }`,
-      { variables: { ids: entry.productIds } }
-    );
-    const json = await resp.json();
-    for (const node of json.data?.nodes || []) {
-      if (node) productMap[node.id] = node.title;
-    }
-  }
-
-  return { entry, productMap };
-};
-
-// ----------------------------------------------------------------
-// Action
-// ----------------------------------------------------------------
-
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const formData = await request.formData();
-
-  const entryId = formData.get("entryId") as string;
-  const title = formData.get("title") as string;
-  const type = formData.get("type") as "percentage" | "fixed_amount";
-  const scope = (formData.get("scope") as "order" | "product") || "order";
-  const active = formData.get("active") === "true";
-
-  // Parse tiers from form data
-  let discountTiers: { minQuantity: number; value: string; message?: string }[] = [];
-  const tiersRaw = formData.get("discountTiers");
-  if (tiersRaw) {
-    try { discountTiers = JSON.parse(tiersRaw as string); } catch {}
-  }
-
-  const firstTier = discountTiers.length > 0 ? discountTiers[0] : null;
-
-  // Parse productIds from form data
-  let productIds: string[] = [];
-  const productIdsRaw = formData.get("productIds");
-  if (productIdsRaw) {
-    try { productIds = JSON.parse(productIdsRaw as string); } catch {}
-  }
-
-  // Read current config
-  const { config, ownerId } = await readConfig(admin);
-
-  // Find and update the entry
-  const idx = config.discounts.findIndex((d) => d.id === entryId);
-  if (idx === -1) {
-    return { ok: false, errors: ["Discount not found"] };
-  }
-
-  const updated: DiscountEntry = {
-    ...config.discounts[idx],
-    title,
-    type,
-    scope,
-    value: firstTier?.value || "10",
-    minQuantity: firstTier?.minQuantity || 0,
-    active,
-    tiers: discountTiers.length > 0 ? discountTiers : undefined,
-    ...(productIds.length > 0 ? { productIds } : { productIds: undefined }),
-  };
-
-  // Find the function node
-  const funcNode = await findFunctionNode();
-  if (!funcNode) {
-    return { ok: false, errors: ["Discount function not found - deploy the app first"] };
-  }
-  const funcId = funcNode.id;
-
-  if (updated.shopifyDiscountId) {
-    const updateErr = await updateShopifyDiscount(admin, updated, funcId);
-    if (updateErr) {
-      return { ok: false, errors: [`Failed to update Shopify discount: ${updateErr}`] };
-    }
-  } else if (updated.active) {
-    const result = await createShopifyDiscount(admin, funcId, updated);
-    if (result.discountId) {
-      updated.shopifyDiscountId = result.discountId;
-    } else if (result.error) {
-      return { ok: false, errors: [`Failed to create Shopify discount: ${result.error}`] };
-    }
-  }
-
-  config.discounts[idx] = updated;
-
-  const err = await writeConfig(admin, config, ownerId);
-  if (err) {
-    return { ok: false, errors: [err] };
-  }
-
-  return { ok: true, type: "updated" };
-};
+import { loader } from "./loader.server";
+export { loader };
+import { action } from "./action.server";
+export { action };
 
 // ----------------------------------------------------------------
 // Component

@@ -12,7 +12,8 @@
 >
   {% render 'bundle-selector', popular_indexs: popular_indexs %}
 </div>
-
+{%- comment -%} 获取主题颜色 {%- endcomment -%}
+<div id="bundle-selector-root" data-proxy-url="{{ shop.url }}/apps/bundle-app"></div>
 
 
 {% style %}
@@ -39,6 +40,26 @@
     background-color: var(--card-selected-color);
   }
 {% endstyle %}  
+
+<script>
+  (async () => {
+    const root = document.getElementById('bundle-selector-root');
+    const proxyUrl = root.dataset.proxyUrl;
+    console.log(896, proxyUrl);
+    const res = await fetch(proxyUrl, {
+      headers: {
+        "ngrok-skip-browser-warning": "true"
+      }
+    });
+    const { colors } = await res.json();
+    console.log(1, colors);
+    const style = root.style;
+
+    Object.keys(colors).forEach((key) => {
+      style.setProperty(`--${key}`, colors[key]);
+    });
+  })();
+</script>
 
 {% schema %}
 {

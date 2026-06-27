@@ -23,7 +23,8 @@
         {% if discount.tiers != blank and discount.tiers.size > 0 %}
           {% comment %} Collect all tiers from this discount {% endcomment %}
           {% for tier in discount.tiers %}
-            {% assign tier_entry = tier | json %}
+            {% assign tier_json = tier | json | remove: '}' %}
+            {% assign tier_entry = tier_json | append: ', "type":"' | append: discount.type | append: '"}' %}
             {% if all_tiers_items != '' %}
               {% assign all_tiers_items = all_tiers_items | append: ',' | append: tier_entry %}
             {% else %}
@@ -32,7 +33,7 @@
           {% endfor %}
         {% elsif discount.value != blank and discount.minQuantity != blank %}
           {% comment %} Fallback: convert single discount to a tier entry {% endcomment %}
-          {% assign fallback_tier = '{"minQuantity":' | append: discount.minQuantity | append: ',"value":"' | append: discount.value | append: '"}' %}
+          {% assign fallback_tier = '{"minQuantity":' | append: discount.minQuantity | append: ',"value":"' | append: discount.value | append: '","type":"' | append: discount.type | append: '"}' %}
           {% if all_tiers_items != '' %}
             {% assign all_tiers_items = all_tiers_items | append: ',' | append: fallback_tier %}
           {% else %}
@@ -145,13 +146,26 @@
   padding: 12px;
   cursor: pointer;
   position: relative;
-  transition: border-color 0.2s, background-color 0.2s;
+  transition: border-color 0.2s, background-color 0.2s, color 0.2s;
   background: #ededed;
 }
 
+.bundle-option:hover {
+  background: var(--selected_variant_hover_background_color);
+  border-color: var(--selected_variant_hover_border_color);
+  color: var(--selected_variant_hover_text_color);
+}
+
 .bundle-option:has(input:checked) {
-  border-color: var(--border-color);
-  background: var(--selected-color);
+  border-color: var(--selected_variant_border_color, var(--border-color));
+  background: var(--selected_variant_background_color, var(--selected-color));
+  color: var(--selected_variant_text_color);
+}
+
+.bundle-option:has(input:checked):hover {
+  border-color: var(--selected_variant_border_color, var(--border-color));
+  background: var(--selected_variant_background_color, var(--selected-color));
+  color: var(--selected_variant_text_color);
 }
 
 .bundle-left {
@@ -321,17 +335,31 @@ option:disabled {
   const tierContainer = document.getElementById('bundle-tier-options');
   const variantSelect = container.querySelector('.bundle-single-select');
 
-  /** Merge tiers from multiple discounts: deduplicate by minQuantity keeping the highest value, then sort ascending */
-  function mergeTiers(rawTiers) {
+  /** Merge tiers from multiple discounts: keep the best value per (minQuantity + type), then across types keep the one with larger dollar savings */
+  function mergeTiers(rawTiers, basePrice) {
     const map = new Map();
     rawTiers.forEach(tier => {
-      const qty = tier.minQuantity;
+      const key = tier.minQuantity + '-' + (tier.type || 'percentage');
       const val = parseFloat(tier.value);
-      if (!map.has(qty) || val > parseFloat(map.get(qty).value)) {
-        map.set(qty, { ...tier });
+      if (!map.has(key) || val > parseFloat(map.get(key).value)) {
+        map.set(key, { ...tier });
       }
     });
-    return Array.from(map.values()).sort((a, b) => a.minQuantity - b.minQuantity);
+
+    // Same minQuantity, different types — compare effective savings in cents
+    const byQty = new Map();
+    for (const tier of map.values()) {
+      const existing = byQty.get(tier.minQuantity);
+      if (!existing) { byQty.set(tier.minQuantity, tier); continue; }
+      const existingSavings = existing.type === 'fixed_amount'
+        ? parseFloat(existing.value) * 100 * existing.minQuantity
+        : basePrice * existing.minQuantity * (parseFloat(existing.value) / 100);
+      const tierSavings = tier.type === 'fixed_amount'
+        ? parseFloat(tier.value) * 100 * tier.minQuantity
+        : basePrice * tier.minQuantity * (parseFloat(tier.value) / 100);
+      if (tierSavings > existingSavings) byQty.set(tier.minQuantity, tier);
+    }
+    return Array.from(byQty.values()).sort((a, b) => a.minQuantity - b.minQuantity);
   }
 
   function getSelectPrice(select) {
@@ -358,7 +386,7 @@ option:disabled {
 
     return Array.from({ length: qty }, (_, index) => `
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="bundle-option-index">#${index + 1}</span>
+            <span class="bundle-option-index" style="display: ${qty === 1 ? 'none' : 'block'};">#${index + 1}</span>
             <div class="variant-select-wrapper">
               <select class="bundle-tier-select variant-select" data-index="${index + 1}">
                   ${optionsHtml}
@@ -418,9 +446,19 @@ option:disabled {
   function updateTierPrice(label) {
     const tierSelects = Array.from(label.querySelectorAll('.bundle-tier-select'));
     const originalTotal = tierSelects.reduce((sum, select) => sum + getSelectPrice(select), 0);
-    const discountPct = parseFloat(label.dataset.discountPct || '0');
-    const discountedTotal = Math.round(originalTotal * (1 - discountPct / 100));
-    const savedAmount = originalTotal - discountedTotal;
+    const discountValue = parseFloat(label.dataset.discountValue || '0');
+    const discountType = label.dataset.discountType || 'percentage';
+
+    let discountedTotal, savedAmount;
+    if (discountType === 'fixed_amount') {
+      const qty = tierSelects.length;
+      const discountCents = discountValue * 100 * qty;
+      discountedTotal = Math.max(0, originalTotal - discountCents);
+      savedAmount = originalTotal - discountedTotal;
+    } else {
+      discountedTotal = Math.round(originalTotal * (1 - discountValue / 100));
+      savedAmount = originalTotal - discountedTotal;
+    }
 
     label.querySelector('.bundle-price').textContent = formatMoney(discountedTotal);
     label.querySelector('.bundle-original-price').textContent = formatMoney(originalTotal);
@@ -470,15 +508,25 @@ option:disabled {
     tierContainer.innerHTML = '';
 
     const tierNames = ['', 'Single', 'Duo', 'Trio', 'Quad'];
-    const popularIndex = (popular_indexs - 2); // 第二个阶梯标记为 Most Popular
-    const mergedTiers = mergeTiers(tiers);
+    const hasQty1Tier = tiers.some(t => t.minQuantity === 1);
+    const popularIndex = (popular_indexs - 2) + (hasQty1Tier ? 1 : 0); // qty=1 tier 会占掉索引0，popular 标记后移一位
+    const basePrice = getSelectPrice(variantSelect);
+    const mergedTiers = mergeTiers(tiers, basePrice);
     mergedTiers.forEach((tier, index) => {
       const qty = tier.minQuantity;
-      const discountPct = parseFloat(tier.value);
-      const basePrice = getSelectPrice(variantSelect);
+      const discountValue = parseFloat(tier.value);
+      const discountType = tier.type || 'percentage';
       const originalTotal = basePrice * qty;
-      const discountedTotal = Math.round(originalTotal * (1 - discountPct / 100));
-      const savedAmount = originalTotal - discountedTotal;
+
+      let discountedTotal, savedAmount;
+      if (discountType === 'fixed_amount') {
+        const discountCents = discountValue * 100 * qty;
+        discountedTotal = Math.max(0, originalTotal - discountCents);
+        savedAmount = originalTotal - discountedTotal;
+      } else {
+        discountedTotal = Math.round(originalTotal * (1 - discountValue / 100));
+        savedAmount = originalTotal - discountedTotal;
+      }
 
       const name = tierNames[qty] || `${qty} Pack`;
       const isPopular = index === popularIndex;
@@ -486,7 +534,8 @@ option:disabled {
       const label = document.createElement('label');
       label.className = 'bundle-option';
       label.dataset.qty = qty;
-      label.dataset.discountPct = discountPct;
+      label.dataset.discountValue = discountValue;
+      label.dataset.discountType = discountType;
       label.style.marginTop = '12px';
       label.innerHTML = `
         <div class="bundle-left">
@@ -497,7 +546,7 @@ option:disabled {
                 <span>${name}</span>
                 <span class="bundle-save-badge">SAVE ${formatMoney(savedAmount)}</span>
               </div>
-              <div class="bundle-desc">You save ${discountPct}%</div>
+              <div class="bundle-desc">${discountType === 'fixed_amount' ? `Save ${formatMoney(discountValue * 100)} off each` : `save ${discountValue}% off`}</div>
             </div>
           </div>
           <div class="bundle-variant" style="--variant-height: ${variantFlag ? (qty * 38 + 28 + 'px') : 0}; --variant-qty: ${qty * 0.05 + 0.1}s;">
@@ -573,7 +622,7 @@ option:disabled {
         id: parseInt(select.value, 10),
         quantity: 1,
         properties: {
-          _yx_bundles: JSON.stringify({ deal: 'VIR1',main: true, bid: generateBid(selectedLabel.dataset.qty) + generateBid(selectedLabel.dataset.discountPct) })
+          _yx_bundles: JSON.stringify({ deal: 'VIR1',main: true, bid: generateBid(selectedLabel.dataset.qty) + generateBid(selectedLabel.dataset.discountValue) + generateBid(selectedLabel.dataset.discountType) })
         }
       }));
     }
@@ -609,6 +658,15 @@ option:disabled {
 
   // 初始渲染
   renderTiers();
+  // 如果已有数量1的阶梯优惠，隐藏默认 Standard price 选项并切换到 tier radio
+  if (tiers.some(t => t.minQuantity === 1)) {
+    const singleEl = container.querySelector('.bundle-option[data-qty="1"]');
+    if (singleEl) {
+      singleEl.style.display = 'none';
+      const tierRadio = container.querySelector('#bundle-tier-options .bundle-option[data-qty="1"] input[type="radio"]');
+      if (tierRadio) tierRadio.checked = true;
+    }
+  }
   updateSinglePrice();
   updateAllTierPrices();
   updateAllAvailability();
