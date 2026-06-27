@@ -146,13 +146,26 @@
   padding: 12px;
   cursor: pointer;
   position: relative;
-  transition: border-color 0.2s, background-color 0.2s;
+  transition: border-color 0.2s, background-color 0.2s, color 0.2s;
   background: #ededed;
 }
 
+.bundle-option:hover {
+  background: var(--selected_variant_hover_background_color);
+  border-color: var(--selected_variant_hover_border_color);
+  color: var(--selected_variant_hover_text_color);
+}
+
 .bundle-option:has(input:checked) {
-  border-color: var(--border-color);
-  background: var(--selected-color);
+  border-color: var(--selected_variant_border_color, var(--border-color));
+  background: var(--selected_variant_background_color, var(--selected-color));
+  color: var(--selected_variant_text_color);
+}
+
+.bundle-option:has(input:checked):hover {
+  border-color: var(--selected_variant_border_color, var(--border-color));
+  background: var(--selected_variant_background_color, var(--selected-color));
+  color: var(--selected_variant_text_color);
 }
 
 .bundle-left {

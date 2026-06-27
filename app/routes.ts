@@ -5,7 +5,8 @@ export default [
 
   route("auth/login", "routes/auth.login/route.tsx"),
   route("auth/*", "routes/auth/$.tsx"),
-
+  route("app/proxy/theme-colors", "routes/app.proxy.theme-colors/route.tsx"),
+  
   route("app", "routes/app/route.tsx", [
     index("routes/app/_index/route.tsx"),
 
