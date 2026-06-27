@@ -45,14 +45,37 @@
   (async () => {
     const root = document.getElementById('bundle-selector-root');
     const proxyUrl = root.dataset.proxyUrl;
-    console.log(896, proxyUrl);
     const res = await fetch(proxyUrl, {
       headers: {
         "ngrok-skip-browser-warning": "true"
       }
     });
-    const { colors } = await res.json();
-    console.log(1, colors);
+    const { current } = await res.json();
+    console.log(1, current);
+    // 新主题：color_schemes 结构
+    if (current.color_schemes) {
+      const schemeKey = Object.keys(current.color_schemes)[0];
+      const scheme = current.color_schemes[schemeKey]?.settings ?? {};
+      colors = Object.fromEntries(
+        Object.entries(scheme).filter(([, v]) =>
+          typeof v === "string" && (v.startsWith("#") || v.startsWith("rgb"))
+        )
+      );
+    }
+
+    // 老主题：平铺颜色字段
+    if (Object.keys(colors).length === 0) {
+      colors = Object.fromEntries(
+        Object.entries(current).filter(([, v]) =>
+          typeof v === "string" && (v.startsWith("#") || v.startsWith("rgb"))
+        )
+      );
+    }
+
+console.log("colors:", colors);
+
+
+
     const style = root.style;
 
     Object.keys(colors).forEach((key) => {
