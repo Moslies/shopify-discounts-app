@@ -53,7 +53,7 @@
 {% if product.variants.size == 1 %}
   {% assign variant_flag = 0 %}
 {% else %}
-  {% assign variant_flag = 62 %}
+  {% assign variant_flag = 66 %}
 {% endif %}
 
 <div 
@@ -84,7 +84,7 @@
             </div>
         
         </div>
-        <div class="bundle-variant" style="--variant-height: 62px; height: {{ variant_flag }}px;">
+        <div class="bundle-variant" style="height: {{ variant_flag }}px;">
               <div class="variant-specification">
                   {{ product.options | join: ' / ' }}
               </div>
@@ -500,7 +500,7 @@ option:disabled {
               <div class="bundle-desc">You save ${discountPct}%</div>
             </div>
           </div>
-          <div class="bundle-variant" style="--variant-height: ${variantFlag ? (qty * 38 + 22 + 'px') : 0}; --variant-qty: ${qty * 0.05 + 0.1};">
+          <div class="bundle-variant" style="--variant-height: ${variantFlag ? (qty * 38 + 26 + 'px') : 0}; --variant-qty: ${qty * 0.05 + 0.1}s;">
             <div class="variant-specification">${specification}</div>
             ${buildVariantSelects(qty)}
           </div>
