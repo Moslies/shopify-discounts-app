@@ -3,15 +3,19 @@
 {%- assign selected_color = block.settings.selected_color | default: '#fff' -%}
 {%- assign border_color = block.settings.border_color | default: '#93c5fd' -%}
 {%- assign popular_indexs = block.settings.popular_indexs | default: 2 -%}
+{%- assign card_padding = block.settings.card_padding | default: 16 -%}
+{%- assign show_card_shadow = block.settings.show_card_shadow | default: false -%}
 
 <bundle-selector-container data-shop-url="{{ shop.url }}" 
   style="
     --card-color: {{ card_color }};
     --selected-color: {{ selected_color }};
     --border-color: {{ border_color }};
+    --card-padding: {{ card_padding }}px;
+    --show-card-shadow: {{ show_card_shadow }};
   "
 >
-    {% render 'bundle-selector', popular_indexs: popular_indexs %}
+    {% render 'bundle-selector', popular_indexs: popular_indexs, show_card_shadow: show_card_shadow%}
 </bundle-selector-container>
 
 {% schema %}
@@ -42,8 +46,23 @@
       "id": "border_color",
       "label": "selected_border_color",
       "default": "#000"
-    }
-
+    },
+    {
+      "type": "range",
+      "id": "card_padding",
+      "label": "card_padding",
+      "default": 16,
+      "min": 0,
+      "max": 32,
+      "step": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "show_card_shadow",
+      "label": "show_card_shadow",
+      "default": true
+    },
+  
   ]
 }
 {% endschema %}
