@@ -241,7 +241,6 @@
 
 .bundle-option:has(input:checked) .bundle-variant {
   height: var(--variant-height);
-  margin-top: 12px;
   transition: all var(--variant-qty) ease;
 }
 .bundle-option.unavailable {
@@ -250,8 +249,6 @@
 
 .variant-select-wrapper {
   position: relative;
-  margin-top: 6px;
-  margin-left: 6px;
   flex: 1;
 }
 
@@ -290,7 +287,8 @@
 }
 
 .variant-specification {
-    font-size: 13px;
+    font-size: 12px;
+    margin-bottom: 4px;
     color: #777;
 }
 
@@ -299,6 +297,7 @@
   font-size: 12px;
   display: inline-block;
   width: 20px;
+  color: #000;
 }
 
 .variant-select {
@@ -311,7 +310,7 @@
 }
 .variant-select:focus {
   border: none;
-  box-shadow: 0 0 0 2px var(--bar-selected-border-color, #000);
+  box-shadow: 0 0 0 2px var(--selected_variant_border_color, var(--border-color));
 }
 option:disabled {
   color: #999;
@@ -396,7 +395,7 @@ option:disabled {
       .join('');
 
     return Array.from({ length: qty }, (_, index) => `
-          <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;margin-bottom: 12px;">
             <span class="bundle-option-index" style="display: ${qty === 1 ? 'none' : 'block'};">#${index + 1}</span>
             <div class="variant-select-wrapper">
               <select class="bundle-tier-select variant-select" data-index="${index + 1}">
@@ -560,7 +559,7 @@ option:disabled {
               <div class="bundle-desc">${discountType === 'fixed_amount' ? `Save ${formatMoney(discountValue * 100)} off each` : `save ${discountValue}% off`}</div>
             </div>
           </div>
-          <div class="bundle-variant" style="--variant-height: ${variantFlag ? (qty * 38 + 28 + 'px') : 0}; --variant-margin-top: ${variantFlag ? '8px' : '0'}; --variant-qty: ${qty * 0.05 + 0.1}s;">
+          <div class="bundle-variant" style="--variant-height: ${variantFlag ? (qty * 44 + 22 + 'px') : 0}; --variant-margin-top: ${variantFlag ? '8px' : '0'}; --variant-qty: ${qty * 0.05 + 0.1}s;">
             <div class="variant-specification">${specification}</div>
             ${buildVariantSelects(qty)}
           </div>
