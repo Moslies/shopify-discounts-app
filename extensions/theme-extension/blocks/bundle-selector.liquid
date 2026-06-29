@@ -66,11 +66,20 @@
 
     // 老主题：colors_ 前缀平铺字段（Dawn）
     if (Object.keys(colors).length === 0) {
-      colors = Object.fromEntries(
+      const dawnColors = Object.fromEntries(
         Object.entries(current).filter(([k, v]) =>
           k.startsWith("colors_") && typeof v === "string"
         )
       );
+      colors = {
+        ...dawnColors,
+        selected_variant_background_color: dawnColors.colors_background_1,
+        selected_variant_border_color: dawnColors.colors_background_1,
+        selected_variant_hover_background_color: dawnColors.colors_outline_button_labels,
+        selected_variant_hover_border_color: dawnColors.colors_outline_button_labels,
+        selected_variant_hover_text_color: dawnColors.colors_text,
+        selected_variant_text_color: dawnColors.colors_text,
+      }
     }
 
 console.log("colors:", colors);
