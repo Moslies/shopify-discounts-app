@@ -4,6 +4,7 @@
 {%- assign popular_indexs = block.settings.popular_indexs | default: 2 -%}
 
 <div 
+    id="bundle-selector-container"
     style="
     --card-color: {{ card_color }};
     --selected-color: {{ selected_color }};
@@ -51,7 +52,6 @@
       }
     });
     const { current } = await res.json();
-    console.log(1, current);
     let colors = {};
     // 新主题：color_schemes 结构
     if (current.color_schemes) {
@@ -62,6 +62,7 @@
           typeof v === "string" && (v.startsWith("#") || v.startsWith("rgb"))
         )
       );
+      colors.selected_variant_background_color = colors.variant_hover_background_color;
     }
 
     // 老主题：colors_ 前缀平铺字段（Dawn）
@@ -82,13 +83,14 @@
       }
     }
 
-console.log("colors:", colors);
+
+    const container = document.getElementById('bundle-selector-container');
 
 
-
-    const style = root.style;
+    const style = container.style;
 
     Object.keys(colors).forEach((key) => {
+      console.log(key, colors[key]);
       style.setProperty(`--${key}`, colors[key]);
     });
   })();

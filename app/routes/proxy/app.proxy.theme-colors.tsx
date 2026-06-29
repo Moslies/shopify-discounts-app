@@ -2,7 +2,6 @@ import { authenticate } from "@/shopify.server";
 
 export const loader = async ({ request }: { request: Request }) => {
   const { admin } = await authenticate.public.appProxy(request);
-
   const response = await admin.graphql(`
     query {
       themes(first: 10) {
