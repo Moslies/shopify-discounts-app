@@ -310,7 +310,7 @@
 }
 .variant-select:focus {
   border: none;
-  box-shadow: 0 0 0 2px var(--bar-selected-border-color, #000);
+  box-shadow: 0 0 0 2px var(--selected_variant_border_color, var(--border-color));
 }
 option:disabled {
   color: #999;
@@ -559,7 +559,7 @@ option:disabled {
               <div class="bundle-desc">${discountType === 'fixed_amount' ? `Save ${formatMoney(discountValue * 100)} off each` : `save ${discountValue}% off`}</div>
             </div>
           </div>
-          <div class="bundle-variant" style="--variant-height: ${variantFlag ? (qty * 38 + 28 + 'px') : 0}; --variant-margin-top: ${variantFlag ? '8px' : '0'}; --variant-qty: ${qty * 0.05 + 0.1}s;">
+          <div class="bundle-variant" style="--variant-height: ${variantFlag ? (qty * 44 + 22 + 'px') : 0}; --variant-margin-top: ${variantFlag ? '8px' : '0'}; --variant-qty: ${qty * 0.05 + 0.1}s;">
             <div class="variant-specification">${specification}</div>
             ${buildVariantSelects(qty)}
           </div>
