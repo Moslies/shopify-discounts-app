@@ -34,7 +34,7 @@ class bundleSelectorContainer extends HTMLElement {
                 selected_variant_hover_background_color: dawnColors.colors_background_1 || '#ffffff',
                 selected_variant_hover_border_color: dawnColors.colors_outline_button_labels || '#387cc9',
                 selected_variant_hover_text_color: dawnColors.colors_text || '#121212',
-                selected_variant_text_color: dawnColors.colors_text || '#121212',
+                selected_variant_text_color: dawnColors.colors_outline_button_labels || '#387cc9',
             }
         }
 
