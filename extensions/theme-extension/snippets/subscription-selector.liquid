@@ -1,0 +1,290 @@
+{%- assign first_variant = product.selected_or_first_available_variant -%}
+{%- assign original_price = first_variant.price -%}
+
+
+<div class="yx-subscription-header">
+    <span></span>
+    <span>
+      {% if tiers_json.size > 0 %}
+        SUBSCRIBE & SAVE
+      {% else %}
+        Purchase Options
+      {% endif %}
+    </span>
+    <span></span>
+  </div>
+ {%- if product.selling_plan_groups.size > 0 -%}
+        {%- comment -%}Render actual subscription plans{%- endcomment -%}
+        <div class="yx-subscription-group">
+          <div class="yx-subscription-group__title">Subscribe and save</div>
+          {%- for selling_plan_group in product.selling_plan_groups -%}
+            {%- for plan in selling_plan_group.selling_plans -%}
+              {%- assign plan_id = plan.id -%}
+              {%- assign plan_name = plan.name -%}
+              {%- comment -%}Extract discount percentage{%- endcomment -%}
+              {%- assign discount_rate = 0 -%}
+              {%- for adjustment in plan.price_adjustments -%}
+                {%- if adjustment.value_type == 'percentage' -%}
+                  {%- assign discount_rate = adjustment.value -%}
+                {%- endif -%}
+              {%- endfor -%}
+
+              {%- comment -%}Calculate subscription price{%- endcomment -%}
+              {%- assign discount_decimal = discount_rate | divided_by: 100.0 -%}
+              {%- assign discount_multiplier = 1 | minus: discount_decimal -%}
+              {%- assign subscription_price = original_price | times: discount_multiplier -%}
+              {%- assign discount_percentage = discount_rate | round -%}
+              {%- comment -%}Delivery frequency description{%- endcomment -%}
+              {%- assign delivery_text = plan.name -%}
+              {%- if plan.recurring_deliveries -%}
+                {%- assign parts = plan.name | split: "|" -%}
+                {%- assign count = parts | first | strip | downcase -%}
+                {%- assign interval = parts | last | strip | downcase -%}
+                {%- capture delivery_info -%}
+                  {{ plan.options.first.name | strip }}
+                  {% unless count == '1' %}{{ count }}{% endunless %}
+                  {{ interval }}
+                {%- endcapture -%}
+              {%- endif -%}
+                  <label class="yx-option yx-option--subscription">
+                      <div class="yx-option__row">
+                          <div class="yx-option__left">
+                            <input
+                                type="radio"
+                                name="purchase_type_{{ product.id }}"
+                                value="subscription"
+                                class="yx-option__radio"
+                                data-purchase-type="subscription"
+                                data-selling-plan-id="{{ plan_id }}"
+                                data-selling-plan-name="{{ plan_name }}"
+                                data-discount-rate="{{ discount_rate }}"
+                                data-delivery-text="{{ delivery_text }}"
+                                data-plan-group-id="{{ selling_plan_group.id }}"
+                            >
+                            <div>
+                              {%- if discount_percentage > 0 -%}
+                                  <span class="yx-option__badge">SAVE {{ discount_percentage }}%</span>
+                              {%- endif -%}
+                              <div class="yx-option__delivery">{{ delivery_info }}</div>
+                            </div>
+                          </div>
+                          <div class="yx-option__prices">
+                            <span class="yx-option__price yx-option__price--sale">{{ subscription_price | money }}</span>
+                            {%- if discount_percentage > 0 -%}
+                                <span class="yx-option__price yx-option__price--compare">{{ original_price | money }}</span>
+                            {%- endif -%}
+                          </div>
+                      </div>
+                  </label>
+            {%- endfor -%}
+          {%- endfor -%}
+        </div>
+      {%- else -%}
+        {%- assign discount_rate = 10 -%}
+        {%- assign discount_decimal = discount_rate | divided_by: 100.0 -%}
+        {%- assign discount_multiplier = 1 | minus: discount_decimal -%}
+        {%- assign subscription_price = original_price | times: discount_multiplier -%}
+        <label class="yx-option yx-option--subscription yx-option--onetime">
+            <div class="yx-option__row">
+                <div class="yx-option__left">
+                  <input
+                      type="radio"
+                      name="purchase_type_{{ product.id }}"
+                      value="subscription"
+                      class="yx-option__radio"
+                      data-purchase-type="subscription"
+                      data-selling-plan-id=""
+                      data-selling-plan-name="Default monthly subscription"
+                      data-discount-rate="{{ discount_rate }}"
+                      data-delivery-text="Deliver every 1 month"
+                  >
+                  <div>
+                    {%- if discount_rate > 0 -%}
+                        <span class="yx-option__badge">SAVE {{ discount_rate }}%</span>
+                    {%- endif -%}
+                      <div class="yx-option__delivery">Deliver every 1 month</div>
+                  </div>
+                </div>
+                <div class="yx-option__prices">
+                  <span class="yx-option__price yx-option__price--sale">{{ subscription_price | money }}</span>
+                  {%- if discount_rate > 0 -%}
+                      <span class="yx-option__price yx-option__price--compare">{{ original_price | money }}</span>
+                  {%- endif -%}
+                </div>
+            </div>
+        </label>
+      {%- endif -%}
+{%- comment -%}One-time purchase option{%- endcomment -%}
+<label class="yx-option yx-option--onetime">
+      <div class="yx-option__row">
+        <div class="yx-option__left">
+          <input
+            type="radio"
+            name="purchase_type_{{ product.id }}"
+            value="onetime"
+            checked
+            class="yx-option__radio"
+            data-purchase-type="onetime"
+          >
+          <span class="yx-option__label">One-time purchase</span>
+        </div>
+        <span class="yx-option__price">{{ original_price | money }}</span>
+      </div>
+</label>
+
+{% style %}
+    .yx-subscription-wrapper {
+        width: 100%;
+        max-width: 680px;
+        margin: 0 auto;
+    }
+    .yx-subscription-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1;
+      column-gap: 10px;
+      margin: 16px 0px;
+      color: #000;
+    }
+    .yx-subscription-header span:first-child, .yx-subscription-header span:last-child {
+      display: block;
+      height: 2px;
+      flex-grow: 1;
+      background: var(--selected_variant_text_color);
+    }
+    .yx-option {
+        display: block;
+        border: 1px solid var(--yx-card-border-color, #d6d8dc);
+        border-radius: 22px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+        background: var(--yx-card-color, #ffffff);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        cursor: pointer;
+        width: 100%;
+    }
+    .yx-option:hover {
+        border-color: var(--yx-card-border-color, #93c5fd);
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+        transform: translateY(-1px);
+    }
+    .yx-option--onetime {
+        background: #f8fafc;
+        width: 100%;
+        margin-top: 12px;
+    }
+    .yx-option__row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .yx-option--subscription .yx-option__row {
+        flex-wrap: nowrap;
+    }
+    .yx-option__left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+    .yx-option__radio {
+        width: 18px;
+        height: 18px;
+        border: 2px solid var(--yx-card-border-color, #6b7280);
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .yx-option__label {
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
+    }
+    .yx-option__prices {
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        white-space: nowrap;
+    }
+    .yx-option__price {
+        font-size: 16px;
+        font-weight: 700;
+        color: #111827;
+    }
+    .yx-option__price--compare {
+        font-size: 14px;
+        font-weight: 500;
+        color: #6b7280;
+        text-decoration: line-through;
+    }
+    .yx-option__badge {
+        display: inline-block;
+        padding: 5px 11px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: #374151;
+        background: #e5e7eb;
+        margin-left: 10px;
+    }
+    .yx-option__delivery {
+        margin-top: 10px;
+        padding-left: 10px;
+        font-size: 14px;
+        color: #4b5563;
+    }
+    .yx-subscription-group {
+        padding: 18px;
+        border: 1px solid var(--yx-card-border-color, #d6d8dc);
+        border-radius: 24px;
+        background: var(--yx-card-color, #ffffff);
+    }
+    .yx-subscription-group__title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      color: #111827;
+    }
+{% endstyle %}
+{%- comment -%}Price cache: all variants + plans for frontend updates{%- endcomment -%}
+<script type="application/json" id="AppCache-{{ block.id }}">
+  {
+    "variants": {
+    {%- for variant in product.variants -%}
+      "{{ variant.id }}":{
+        "fmt":"{{ variant.price | money | escape }}",
+        "plans":{
+          "0":{"fmt":"{{ variant.price | money | escape }}"}
+          {%- if variant.selling_plan_allocations.size > 0 -%}
+            {%- for allocation in variant.selling_plan_allocations -%}
+            ,"{{ allocation.selling_plan.id }}":{"fmt":"{{ allocation.price | money | escape }}","pct":{{ allocation.price_adjustments.first.value | default: 0 }}}
+            {%- endfor -%}
+          {%- endif -%}
+        }
+      }{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+    },
+    "plans":[
+    {%- if product.selling_plan_groups.size > 0 -%}
+      {%- for group in product.selling_plan_groups -%}
+        {%- for plan in group.selling_plans -%}
+          {%- assign pct = 0 -%}
+          {%- for adj in plan.price_adjustments -%}
+            {%- if adj.value_type == 'percentage' -%}{%- assign pct = adj.value -%}{%- endif -%}
+          {%- endfor -%}
+          {"id":"{{ plan.id }}","pct":{{ pct }}}{% unless forloop.last %},{% endunless %}
+        {%- endfor -%}{% unless forloop.last %},{% endunless %}
+      {%- endfor -%}
+    {%- else -%}
+      {"id":"","pct":10}
+    {%- endif -%}
+    ]
+  }
+</script>

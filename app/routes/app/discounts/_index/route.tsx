@@ -83,24 +83,12 @@ export default function DiscountListPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--s-border-color, #ccc)" }}>
-                  <th style={{ textAlign: "left", padding: "8px 12px" }}>
-                    <s-text color="subdued">Title</s-text>
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px 12px", width: "15%" }}>
-                    <s-text color="subdued">Scope</s-text>
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px 12px", width: "12%" }}>
-                    <s-text color="subdued">Type</s-text>
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px 12px" }}>
-                    <s-text color="subdued">Quantity</s-text>
-                  </th>
-                  <th style={{ textAlign: "left", padding: "8px 12px", width: "15%" }}>
-                    <s-text color="subdued">Status</s-text>
-                  </th>
-                  <th style={{ textAlign: "center", padding: "8px 12px", width: "18%" }}>
-                    <s-text color="subdued">Actions</s-text>
-                  </th>
+                  <th style={{ textAlign: "left", padding: "8px 12px" }}>Title</th>
+                  <th style={{ textAlign: "left", padding: "8px 12px", width: "15%" }}>Scope</th>
+                  <th style={{ textAlign: "left", padding: "8px 12px", width: "12%" }}>Type</th>
+                  <th style={{ textAlign: "left", padding: "8px 12px" }}>Quantity</th>
+                  <th style={{ textAlign: "left", padding: "8px 12px", width: "15%" }}>Status</th>
+                  <th style={{ textAlign: "center", padding: "8px 12px", width: "18%" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>

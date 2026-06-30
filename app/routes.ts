@@ -17,6 +17,12 @@ export default [
       route("products", "routes/app/discounts/products/route.tsx"),
       route(":id", "routes/app/discounts/$id/route.tsx"),
     ]),
+
+    route("subscriptions", "routes/app/subscriptions/route.tsx", [
+      index("routes/app/subscriptions/_index/route.tsx"),
+      route("new", "routes/app/subscriptions/new/route.tsx"),
+      route(":id", "routes/app/subscriptions/$id/route.tsx"),
+    ]),
   ]),
 
   route(
