@@ -1,6 +1,10 @@
-// ✅ shopUrl 作为参数，不依赖 this
+window.sym = {
+    bundleWidget: null,
+    subscriptionWidget: null,
+}
 let themeDataPromise = null;
-
+let yxOptionRadioStyleInjected = false;
+let fetchInstalled = false;
 const getThemes = async (shopUrl) => {
   if (!themeDataPromise) {
     themeDataPromise = fetch(`${shopUrl}/apps/theme`, {
@@ -42,7 +46,6 @@ const YX_OPTION_RADIO_STYLE = `
         background-color: rgba(59,130,246,0.18) !important;
     }
 `;
-let yxOptionRadioStyleInjected = false;
 function injectYxOptionRadioStyle() {
     if (yxOptionRadioStyleInjected) return;
     const style = document.createElement('style');
@@ -56,6 +59,7 @@ class themeContainer extends HTMLElement {
     async connectedCallback() {
         injectYxOptionRadioStyle();
         const current = await getThemes(this.dataset.shopUrl);
+        this.installFetchInterceptor();
         this.setThemes(current);
     }
     async setThemes(current) {
@@ -108,6 +112,88 @@ class themeContainer extends HTMLElement {
         });
     }
     
+    installFetchInterceptor() {
+        if (fetchInstalled) return;
+        fetchInstalled = true;
+
+        const originalFetch = window.fetch;
+
+        window.fetch = async (url, options = {}) => {
+        if (
+            typeof url === "string" &&
+            url.includes("/cart/add") &&
+            options.method === "POST"
+        ) {
+            const body = options.body;
+
+            if (body instanceof FormData && body.get("form_type") === "product") {
+
+
+            const myBundleItems = this.getBundleSelectedVariants();
+            const planId = this.getSelectedSellingPlan()
+            if (myBundleItems.length === 0) {
+                return originalFetch(url, options);
+            }
+
+            const newFormData = new FormData();
+
+            [
+                "form_type",
+                "utf8",
+                "product-id",
+                "section-id",
+                "sections",
+            ].forEach((key) => {
+                const value = body.get(key);
+                if (value) newFormData.append(key, value);
+            });
+
+            myBundleItems.forEach((item, i) => {
+                newFormData.append(`items[${i}][id]`, item.id);
+                newFormData.append(`items[${i}][quantity]`, item.quantity ?? 1);
+                newFormData.append(
+                `items[${i}][properties][_yx_bundles]`,
+                item.properties._yx_bundles
+                );
+
+                if (planId) {
+                    newFormData.append(
+                        `items[${i}][selling_plan]`,
+                        planId
+                    );
+                }
+                if (body.get("selling_plan")) {
+                    newFormData.append(
+                        `items[${i}][selling_plan]`,
+                        body.get("selling_plan")
+                    );
+                }
+            });
+
+            return originalFetch(url, {
+                ...options,
+                body: newFormData,
+            });
+            }
+        }
+
+        return originalFetch(url, options);
+        };
+    }
+
+    getBundleSelectedVariants() {
+        const bundleWidget = window.sym.bundleWidget;
+        if (!bundleWidget) return [];
+        const items = bundleWidget.getBundleSelectedVariants();
+        return items
+    }
+
+    getSelectedSellingPlan() {
+        const subscriptionWidget = window.sym.subscriptionWidget;
+        if (!subscriptionWidget) return '';
+        return subscriptionWidget.getSelectedSellingPlan();
+    }
+
 }
 
 if (!customElements.get('theme-container')) {

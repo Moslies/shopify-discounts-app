@@ -1,4 +1,6 @@
-<script src="{{ 'theme.js' | asset_url }}" async></script>
+<script src="{{ 'theme.js' | asset_url }}" defer></script>
+<script src="{{ 'bundle-selector-widget.js' | asset_url }}" defer></script>
+
 {%- assign card_color = block.settings.card_color | default: '#ffffff' -%}
 {%- assign selected_color = block.settings.selected_color | default: '#fff' -%}
 {%- assign popular_indexs = block.settings.popular_indexs | default: 2 -%}
@@ -13,7 +15,9 @@
     --show-card-shadow: {{ show_card_shadow }};
   "
 >
-    {% render 'bundle-selector', popular_indexs: popular_indexs, show_card_shadow: show_card_shadow%}
+    <bundle-selector-widget>
+      {% render 'bundle-selector', popular_indexs: popular_indexs, show_card_shadow: show_card_shadow%}
+    </bundle-selector-widget>
 </theme-container>
 
 {% schema %}

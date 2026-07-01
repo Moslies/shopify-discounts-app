@@ -2,16 +2,18 @@
   my-subscription.liquid
   Subscription plan selector component
 {%- endcomment -%}
-<script src="{{ 'theme.js' | asset_url }}" async></script>
+<script src="{{ 'theme.js' | asset_url }}" defer></script>
+<script src="{{ 'subscription-selector-widget.js' | asset_url }}" defer></script>
 
 {%- assign show_card_shadow = block.settings.show_card_shadow | default: false -%}
 
 <theme-container
  class="yx-subscription-wrapper"
  data-shop-url="{{ shop.url }}"
- data-product-id="{{ product.id }}"
 >
-  {% render 'subscription-selector', show_card_shadow: show_card_shadow %}
+  <subscription-selector-widget>
+    {% render 'subscription-selector', show_card_shadow: show_card_shadow %}
+  </subscription-selector-widget>
 </theme-container>
 {% style %}
     .yx-subscription-wrapper {
