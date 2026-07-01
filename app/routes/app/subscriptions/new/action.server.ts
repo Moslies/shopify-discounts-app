@@ -4,7 +4,7 @@ import { createSellingPlanGroup } from "@/lib/subscription-helpers.server";
 
 function getIntervalLabel(timeType: string, count: number) {
   const unit = timeType === "year" ? "year" : timeType === "month" ? "month" : timeType === "week" ? "week" : "day";
-  return `${count === 1 ? "" : `${count} `}${count === 1 ? unit : `${unit}s`}`;
+  return `${count} ${count === 1 ? unit : `${unit}s`}`;
 }
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -33,10 +33,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const intervalCount = parseInt(intervalCounts[index] || "1", 10);
     const discount = Math.min(parseFloat(discounts[index] || "0"), 100);
     const intervalLabel = getIntervalLabel(interval.toLowerCase(), intervalCount);
-
+    const discountLabel = discount ? ` ${discount}% off` : "";
     return {
-      name: `Delivery: every ${intervalLabel}${discount ? ` | ${discount}% off` : ""}`,
-      options: [`${intervalCount} ${intervalCount === 1 ? intervalLabel : `${intervalLabel}s`}`],
+      name: `Delivery every: ${intervalLabel}${discountLabel}`, // TODO: Add discount label
+      options: [intervalLabel, discountLabel],
       category: "SUBSCRIPTION" as const,
       billingPolicy: {
         recurring: { interval, intervalCount },

@@ -50,7 +50,7 @@ export default function EditSubscriptionPage() {
   const [name, setName] = useState<string>(group.name ?? "");
   const [merchantCode, setMerchantCode] = useState<string>(group.merchantCode ?? "");
   const [description, setDescription] = useState<string>(group.description ?? "");
-  const [options, setOptions] = useState<string>((group.options as string[] | undefined)?.join(", ") ?? "Delivery every");
+  const [options] = useState<string>((group.options as string[] | undefined)?.join(", ") ?? "Delivery every, Discount % off");
   const [plans, setPlans] = useState<PlanState[]>(initialPlans);
   const [deletedPlanIds, setDeletedPlanIds] = useState<string[]>([]);
   const [productIds, setProductIds] = useState<string[]>(existingProducts.ids);
@@ -61,7 +61,6 @@ export default function EditSubscriptionPage() {
     setName(group.name ?? "");
     setMerchantCode(group.merchantCode ?? "");
     setDescription(group.description ?? "");
-    setOptions((group.options as string[] | undefined)?.join(", ") ?? "Delivery every");
     setPlans(initialPlans);
     setProductIds(existingProducts.ids);
     setProductNames(existingProducts.names);
@@ -104,7 +103,7 @@ export default function EditSubscriptionPage() {
     formData.set("name", name);
     formData.set("merchantCode", merchantCode);
     formData.set("description", description);
-    formData.set("options", options);
+    formData.set("options", "Delivery every, Discount % off");
     formData.set("productIds", productIds.join(","));
     formData.set("deletedPlanIds", deletedPlanIds.join(","));
 
@@ -131,7 +130,9 @@ export default function EditSubscriptionPage() {
               <s-text-field label="Name" value={name} onInput={(event) => setName((event.target as HTMLInputElement).value)} />
               <s-text-field label="Merchant code" value={merchantCode} onInput={(event) => setMerchantCode((event.target as HTMLInputElement).value)} />
               <s-text-area label="Description" value={description} rows={3} onInput={(event) => setDescription((event.target as HTMLTextAreaElement).value)} />
-              <s-text-field label="Options (comma-separated)" value={options} onInput={(event) => setOptions((event.target as HTMLInputElement).value)} />
+              <div style={{ display: "none" }}>
+                <s-text-field label="Options (comma-separated)" value={options} />
+              </div>
             </s-stack>
           </s-section>
         </s-box>
@@ -187,7 +188,7 @@ export default function EditSubscriptionPage() {
         <s-box paddingBlockEnd="small">
           <s-section heading="Link products (optional)">
             <s-stack direction="block" gap="base">
-              <s-text color="base">Eligible Products (If none selected, applies to all products)</s-text>
+              <s-text color="base">Eligible Products</s-text>
               <s-button variant="primary" onClick={() => setPickerOpen(true)}>
                 {productIds.length > 0
                   ? `Add / Remove Products (${productIds.length} selected)`

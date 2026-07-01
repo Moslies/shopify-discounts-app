@@ -23,7 +23,7 @@ export default function NewSubscriptionPage() {
   const [name, setName] = useState("");
   const [merchantCode, setMerchantCode] = useState("");
   const [description, setDescription] = useState("");
-  const [options, setOptions] = useState("Delivery every");
+  const [options] = useState("Delivery every, Discount % off");
   const [plans, setPlans] = useState([{ interval: "WEEK", intervalCount: "1", discount: "0" }]);
   const [productIds, setProductIds] = useState<string[]>([]);
   const [productNames, setProductNames] = useState<Record<string, string>>({});
@@ -89,7 +89,9 @@ export default function NewSubscriptionPage() {
               <s-text-field label="Name" value={name} onInput={(event) => setName((event.target as HTMLInputElement).value)} />
               <s-text-field label="Merchant code" value={merchantCode} onInput={(event) => setMerchantCode((event.target as HTMLInputElement).value)} />
               <s-text-area label="Description" value={description} rows={3} onInput={(event) => setDescription((event.target as HTMLTextAreaElement).value)} />
-              <s-text-field label="Options (comma-separated)" value={options} onInput={(event) => setOptions((event.target as HTMLInputElement).value)} />
+              <div style={{ display: "none" }}>
+                <s-text-field label="Options (comma-separated)" value={options} />
+              </div>
             </s-stack>
           </s-section>
         </s-box>

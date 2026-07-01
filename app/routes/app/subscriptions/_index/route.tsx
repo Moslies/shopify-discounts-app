@@ -81,7 +81,6 @@ export default function SubscriptionListPage() {
                   <th style={{ textAlign: "left", padding: "8px 12px" }}>Name</th>
                   <th style={{ textAlign: "left", padding: "8px 12px" }}>Code</th>
                   <th style={{ textAlign: "left", padding: "8px 12px" }}>Plans</th>
-                  <th style={{ textAlign: "left", padding: "8px 12px" }}>Options</th>
                   <th style={{ textAlign: "center", padding: "8px 12px", width: "18%" }}>Actions</th>
                 </tr>
               </thead>
@@ -96,9 +95,6 @@ export default function SubscriptionListPage() {
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       <s-text color="subdued">{group.sellingPlans?.nodes?.length ?? 0}</s-text>
-                    </td>
-                    <td style={{ padding: "10px 12px" }}>
-                      <s-text color="subdued">{group.options?.join(", ") ?? ""}</s-text>
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "center" }}>
                       <s-stack direction="inline" gap="base">

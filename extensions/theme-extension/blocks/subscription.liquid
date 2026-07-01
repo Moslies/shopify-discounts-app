@@ -4,41 +4,32 @@
 {%- endcomment -%}
 <script src="{{ 'theme.js' | asset_url }}" async></script>
 
-{%- assign yx_card_color = section.settings.card_color | default: '#ffffff' -%}
-{%- assign yx_card_selected_color = section.settings.card_selected_color | default: '#eff6ff' -%}
-{%- assign yx_border_color = section.settings.card_border_color | default: '#93c5fd' -%}
-<theme-container data-shop-url="{{ shop.url }}">
-  <div class="yx-subscription-wrapper" data-product-id="{{ product.id }}" style="
-    --yx-card-color: {{ yx_card_color }};
-    --yx-card-selected-color: {{ yx_card_selected_color }};
-    --yx-card-border-color: {{ yx_border_color }};
-  ">
-    {% render 'subscription-selector' %}
-  </div>
-</theme-container>
+{%- assign show_card_shadow = block.settings.show_card_shadow | default: false -%}
 
+<theme-container
+ class="yx-subscription-wrapper"
+ data-shop-url="{{ shop.url }}"
+ data-product-id="{{ product.id }}"
+>
+  {% render 'subscription-selector', show_card_shadow: show_card_shadow %}
+</theme-container>
+{% style %}
+    .yx-subscription-wrapper {
+        width: 100%;
+        max-width: 680px;
+        margin: 0 auto;
+    }
+{% endstyle %}
 {% schema %}
 {
   "name": "subscription",
   "target": "section",
   "settings": [
     {
-      "type": "color",
-      "id": "card_color",
-      "label": "Card background",
-      "default": "#ffffff"
-    },
-    {
-      "type": "color",
-      "id": "card_selected_color",
-      "label": "Selected card color",
-      "default": "#eff6ff"
-    },
-    {
-      "type": "color",
-      "id": "card_border_color",
-      "label": "Border color",
-      "default": "#93c5fd"
+      "type": "checkbox",
+      "id": "show_card_shadow",
+      "label": "show_card_shadow",
+      "default": true
     }
   ]
 }

@@ -9,7 +9,7 @@ import {
 
 function getIntervalLabel(timeType: string, count: number) {
   const unit = timeType === "year" ? "year" : timeType === "month" ? "month" : timeType === "week" ? "week" : "day";
-  return `${count === 1 ? "" : `${count} `}${count === 1 ? unit : `${unit}s`}`;
+  return `${count} ${count === 1 ? unit : `${unit}s`}`;
 }
 
 export const action = async ({ request, params }: ActionFunctionArgs) => {
@@ -50,10 +50,12 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     .filter((plan) => plan.planId)
     .map((plan) => {
       const intervalLabel = getIntervalLabel(plan.interval.toLowerCase(), plan.intervalCount);
+      const discount = plan.discount ? ` ${plan.discount}% off` : "";
+
       return {
         id: plan.planId,
-        name: `Delivery: every ${intervalLabel}${plan.discount ? ` | ${plan.discount}% off` : ""}`,
-        options: [`${plan.intervalCount} ${plan.intervalCount === 1 ? intervalLabel : `${intervalLabel}s`}`],
+        name: `Delivery every: ${intervalLabel}${discount}`,
+        options: [intervalLabel, discount],
         billingPolicy: { recurring: { interval: plan.interval, intervalCount: plan.intervalCount } },
         deliveryPolicy: { recurring: { interval: plan.interval, intervalCount: plan.intervalCount } },
         pricingPolicies:
@@ -67,9 +69,10 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     .filter((plan) => !plan.planId)
     .map((plan) => {
       const intervalLabel = getIntervalLabel(plan.interval.toLowerCase(), plan.intervalCount);
+      const discount = plan.discount ? ` ${plan.discount}% off` : "";
       return {
-        name: `Delivery: every ${intervalLabel}${plan.discount ? ` | ${plan.discount}% off` : ""}`,
-        options: [`${plan.intervalCount} ${plan.intervalCount === 1 ? intervalLabel : `${intervalLabel}s`}`],
+        name: `Delivery: every ${intervalLabel}${discount}`,
+        options: [intervalLabel, discount],
         category: "SUBSCRIPTION" as const,
         billingPolicy: { recurring: { interval: plan.interval, intervalCount: plan.intervalCount } },
         deliveryPolicy: { recurring: { interval: plan.interval, intervalCount: plan.intervalCount } },

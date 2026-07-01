@@ -83,7 +83,7 @@
   <label class="bundle-option" data-qty="1">
     <div class="bundle-left">
         <div class="bundle-option-content">
-            <input style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="1" checked>
+            <input class="yx-option__radio" style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="1" checked>
             <div>
                 <div class="bundle-name">Single</div>
                 <div class="bundle-desc">Standard price</div>
@@ -139,44 +139,47 @@
   line-height: 1;
   column-gap: 10px;
   margin: 16px 0px;
-  color: #000;
+  color: var(--selected_variant_text_color, #111827);
 }
 .bundle-title span:first-child, .bundle-title span:last-child {
   display: block;
   height: 2px;
   flex-grow: 1;
-  background: var(--selected_variant_text_color);
+  background: var(--selected_variant_text_color, #d6d8dc);
 }
 .bundle-option {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 12px;
-  border: 2px solid #e0e0e0;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 12px;
   cursor: pointer;
   position: relative;
-  transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   background: #ededed;
 }
 
 .bundle-option:hover {
-  background: var(--selected_variant_hover_background_color);
-  border-color: var(--selected_variant_hover_border_color);
-  color: var(--selected_variant_hover_text_color);
+  background: var(--selected_variant_hover_background_color, rgba(59,130,246,0.08));
+  border-color: var(--selected_variant_hover_border_color, #93c5fd);
+  color: var(--selected_variant_hover_text_color, #111827);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
 }
 
 .bundle-option:has(input:checked) {
-  border-color: var(--selected_variant_border_color, var(--border-color));
-  background: var(--selected_variant_background_color, var(--selected-color));
-  color: var(--selected_variant_text_color);
+  border-color: var(--selected_variant_border_color, #3b82f6);
+  background: rgb(var(--selected_variant_background_color, rgba(59,130,246,0.08)) / 0.5);
+  color: var(--selected_variant_text_color, #111827);
+  box-shadow: 0 12px 28px rgba(59,130,246,0.14);
 }
 
 .bundle-option:has(input:checked):hover {
-  border-color: var(--selected_variant_border_color, var(--border-color));
-  background: var(--selected_variant_background_color, var(--selected-color));
-  color: var(--selected_variant_text_color);
+  border-color: var(--selected_variant_border_color, #2563eb);
+  background: rgb(var(--selected_variant_background_color, rgba(59,130,246,0.08)) / 0.5);
+  color: var(--selected_variant_text_color, #111827);
 }
 
 .bundle-left {
@@ -279,8 +282,8 @@
   position: absolute;
   top: -12px;
   right: 12px;
-  background: var(--selected_variant_border_color, var(--border-color));
-  color: #fff;
+  background: var(--selected_variant_border_color, var(--selected-color));
+  color: var(--badge_text_color, #111827);
   border-radius: 20px;
   padding: 4px 10px;
   font-size: 11px;
@@ -311,7 +314,7 @@
 }
 .variant-select:focus {
   border: none;
-  box-shadow: 0 0 0 2px var(--selected_variant_border_color, var(--border-color));
+  box-shadow: 0 0 0 2px var(--selected_variant_border_color, var(--selected-color));
 }
 option:disabled {
   color: #999;
@@ -551,7 +554,7 @@ option:disabled {
       label.innerHTML = `
         <div class="bundle-left">
           <div class="bundle-option-content">
-            <input style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="${qty}">
+            <input class="yx-option__radio" style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="${qty}">
             <div>
               <div class="bundle-name">
                 <span>${name}</span>

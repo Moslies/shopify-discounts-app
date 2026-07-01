@@ -16,8 +16,45 @@ const getThemes = async (shopUrl) => {
   return themeDataPromise;
 };
 
+const YX_OPTION_RADIO_STYLE = `
+    .yx-option__radio {
+        width: 18px;
+        height: 18px;
+        border: 2px solid var(--selected_variant_border_color, #6b7280);
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        accent-color: var(--selected_variant_border_color, #2563eb);
+    }
+    .yx-option__radio:checked {
+        border-color: var(--selected_variant_border_color, #2563eb) !important;
+        accent-color: var(--selected_variant_border_color, #2563eb) !important;
+    }
+    .yx-option__radio:checked::after,
+    .yx-option__radio:checked::before {
+        background-color: var(--selected_variant_border_color, #2563eb) !important;
+        border-color: var(--selected_variant_border_color, #2563eb) !important;
+    }
+    .yx-option__radio:not(:disabled):hover:checked {
+        border-color: var(--selected_variant_border_color, #2563eb) !important;
+        background-color: rgba(59,130,246,0.18) !important;
+    }
+`;
+let yxOptionRadioStyleInjected = false;
+function injectYxOptionRadioStyle() {
+    if (yxOptionRadioStyleInjected) return;
+    const style = document.createElement('style');
+    style.setAttribute('data-yx-option-radio', 'true');
+    style.textContent = YX_OPTION_RADIO_STYLE;
+    document.head.appendChild(style);
+    yxOptionRadioStyleInjected = true;
+}
+
 class themeContainer extends HTMLElement {
     async connectedCallback() {
+        injectYxOptionRadioStyle();
         const current = await getThemes(this.dataset.shopUrl);
         this.setThemes(current);
     }
@@ -33,10 +70,15 @@ class themeContainer extends HTMLElement {
                 typeof v === "string" && (v.startsWith("#") || v.startsWith("rgb"))
                 )
             );
+            console.log(colors);
             colors.selected_variant_background_color = colors.variant_background_color || '#fff';
             colors.selected_variant_text_color = colors.variant_text_color || '#121212';
             colors.selected_variant_hover_background_color = colors.variant_hover_background_color || '#f4f7fa';
             colors.selected_variant_hover_text_color = colors.variant_hover_text_color || '#121212';
+            colors.badge_text_color = colors.primary_button_text || '#fff';
+            colors.variant_border_color = colors.input_border_color || '#387cc9';
+            colors.variant_hover_border_color = colors.variant_hover_border_color || '#387cc9';
+            colors.selected_subscription_text_color = colors.primary_button_text || '#fff';
         }
 
         // 老主题：colors_ 前缀平铺字段（Dawn）
@@ -54,6 +96,10 @@ class themeContainer extends HTMLElement {
                 selected_variant_hover_border_color: dawnColors.colors_outline_button_labels || '#387cc9',
                 selected_variant_hover_text_color: dawnColors.colors_text || '#121212',
                 selected_variant_text_color: dawnColors.colors_outline_button_labels || '#387cc9',
+                badge_text_color: dawnColors.colors_outline_button_labels || '#387cc9',
+                variant_border_color: dawnColors.colors_outline_button_labels || '#387cc9',
+                variant_hover_border_color: dawnColors.colors_outline_button_labels || '#387cc9',
+                selected_subscription_text_color: dawnColors.colors_outline_button_labels || '#fff',
             }
         }
 
