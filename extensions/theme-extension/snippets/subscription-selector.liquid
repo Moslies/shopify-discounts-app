@@ -1,0 +1,210 @@
+
+{%- if product.selling_plan_groups.size > 0 -%}
+  <div class="yx-subscription-container">
+    <div class="yx-sub-cards-wrapper">
+      {%- for selling_plan_group in product.selling_plan_groups -%}
+        <div class="yx-sub-card">
+          <div class="yx-sub-card__header">
+            <div class="yx-sub-card__title-price">
+              <h3 class="yx-sub-card__title">Subscribe &amp; Save</h3>
+            </div>
+            <div class="yx-sub-card__benefits">
+              <div class="yx-sub-benefit yx-sub-save-benefit" style="display: none;">
+                <span class="yx-sub-benefit__icon">✓</span>
+                <span class="yx-sub-save-rate"></span>
+              </div>
+              {% comment %} <div class="yx-sub-benefit">
+                <span class="yx-sub-benefit__icon">✓</span>
+                <span>Free shipping</span>
+              </div> {% endcomment %}
+              <div class="yx-sub-benefit">
+                <span class="yx-sub-benefit__icon">✓</span>
+                <span>No commitment. Cancel anytime</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="yx-sub-card__body">
+            <div class="yx-sub-card__label">Deliver every:</div>
+            <div class="yx-sub-delivery-buttons">
+              {%- for plan in selling_plan_group.selling_plans -%}
+                {%- assign plan_id = plan.id -%}
+                {%- assign plan_name = plan.name -%}
+                {%- assign discount_rate = 0 -%}
+                {%- for adjustment in plan.price_adjustments -%}
+                  {%- if adjustment.value_type == 'percentage' -%}
+                    {%- assign discount_rate = adjustment.value -%}
+                  {%- endif -%}
+                {%- endfor -%}
+                {%- assign discount_percentage = discount_rate | round -%}
+                <button type="button" 
+                  class="yx-delivery-btn" 
+                  data-plan-id="{{ plan_id }}"
+                  data-discount-rate="{{ discount_rate }}"
+                  data-plan-name="{{ plan_name }}"
+                  data-plan-group-id="{{ selling_plan_group.id }}"
+                >
+                  <span class="yx-delivery-btn__text">{{ plan.options[0].value }}</span>
+                  {%- if discount_percentage > 0 -%}
+                    <span class="yx-delivery-btn__badge">save {{ discount_percentage }}%</span>
+                  {%- endif -%}
+                </button>
+              {%- endfor -%}
+            </div>
+          </div>
+        </div>
+        
+        <input 
+          type="radio"
+          name="purchase_type_{{ product.id }}"
+          value="subscription"
+          class="yx-purchase-type-radio"
+          data-purchase-type="subscription"
+          data-plan-group-id="{{ selling_plan_group.id }}"
+          style="display: none;"
+        >
+        <input 
+          type="hidden"
+          name="selling_plan_{{ product.id }}"
+          class="yx-selling-plan-hidden"
+          data-plan-group-id="{{ selling_plan_group.id }}"
+        >
+      {%- endfor -%}
+    </div>
+  </div>
+{%- endif -%}
+
+{% style %}
+.yx-subscription-container {
+  width: 100%;
+}
+
+.yx-sub-cards-wrapper {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.yx-sub-card {
+  border: 2px solid #d6d8dc;
+  border-radius: 16px;
+  padding: 20px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.yx-sub-card__header {
+  margin-bottom: 20px;
+  gap: 16px;
+}
+
+.yx-sub-card__title-price {
+  flex: 1;
+  margin-bottom: 12px;
+}
+
+.yx-sub-card__title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: #111827;
+}
+
+.yx-sub-card__benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.yx-sub-benefit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #4b5563;
+}
+
+.yx-sub-benefit__icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid #93c5fd;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.yx-sub-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.yx-sub-card__label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.yx-sub-delivery-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.yx-delivery-btn {
+  flex: 1 1 100px;
+  padding: 12px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 60px;
+  justify-content: center;
+  text-align: center;
+}
+
+.yx-delivery-btn:hover {
+  background: #ffffff;
+  border-color: var(--selected_variant_border_color, #2563eb);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+  transform: translateY(-1px);
+}
+
+.yx-delivery-btn.selected {
+  background: var(--selected_variant_border_color, #2563eb);
+  color: var(--selected_subscription_text_color, #fff);
+  border-color: var(--selected_variant_border_color, #2563eb);
+}
+
+.yx-delivery-btn__text {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  hyphens: auto;
+}
+
+.yx-delivery-btn__badge {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffa500;
+}
+
+.yx-delivery-btn.selected .yx-delivery-btn__badge {
+  color: #ffa500;
+}
+
+{% endstyle %}

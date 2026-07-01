@@ -1,22 +1,24 @@
-<script src="{{ 'bundle-selector-container.js' | asset_url }}" async></script>
+<script src="{{ 'theme.js' | asset_url }}" defer></script>
+<script src="{{ 'bundle-selector-widget.js' | asset_url }}" defer></script>
+
 {%- assign card_color = block.settings.card_color | default: '#ffffff' -%}
 {%- assign selected_color = block.settings.selected_color | default: '#fff' -%}
-{%- assign border_color = block.settings.border_color | default: '#93c5fd' -%}
 {%- assign popular_indexs = block.settings.popular_indexs | default: 2 -%}
 {%- assign card_padding = block.settings.card_padding | default: 16 -%}
 {%- assign show_card_shadow = block.settings.show_card_shadow | default: false -%}
 
-<bundle-selector-container data-shop-url="{{ shop.url }}" 
+<theme-container data-shop-url="{{ shop.url }}" 
   style="
     --card-color: {{ card_color }};
     --selected-color: {{ selected_color }};
-    --border-color: {{ border_color }};
     --card-padding: {{ card_padding }}px;
     --show-card-shadow: {{ show_card_shadow }};
   "
 >
-    {% render 'bundle-selector', popular_indexs: popular_indexs, show_card_shadow: show_card_shadow%}
-</bundle-selector-container>
+    <bundle-selector-widget>
+      {% render 'bundle-selector', popular_indexs: popular_indexs, show_card_shadow: show_card_shadow%}
+    </bundle-selector-widget>
+</theme-container>
 
 {% schema %}
 {
@@ -42,27 +44,21 @@
       "default": "#fff"
     },
     {
-      "type": "color",
-      "id": "border_color",
-      "label": "selected_border_color",
-      "default": "#000"
-    },
-    {
       "type": "range",
       "id": "card_padding",
       "label": "card_padding",
       "default": 16,
       "min": 0,
       "max": 32,
-      "step": 1
+      "step": 1,
+      "unit": "px"
     },
     {
       "type": "checkbox",
       "id": "show_card_shadow",
       "label": "show_card_shadow",
       "default": true
-    },
-  
+    }
   ]
 }
 {% endschema %}

@@ -2,6 +2,11 @@ import { authenticate } from "@/shopify.server";
 
 export const loader = async ({ request }: { request: Request }) => {
   const { admin } = await authenticate.public.appProxy(request);
+
+  if (!admin) {
+    return Response.json({ error: "Admin context is unavailable" }, { status: 401 });
+  }
+
   const response = await admin.graphql(`
     query {
       themes(first: 10) {
