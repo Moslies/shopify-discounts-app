@@ -100,10 +100,10 @@ class themeContainer extends HTMLElement {
                 selected_variant_hover_border_color: dawnColors.colors_outline_button_labels || '#387cc9',
                 selected_variant_hover_text_color: dawnColors.colors_text || '#121212',
                 selected_variant_text_color: dawnColors.colors_outline_button_labels || '#387cc9',
-                badge_text_color: dawnColors.colors_outline_button_labels || '#387cc9',
+                badge_text_color: dawnColors.colors_solid_button_labels || '#fff',
                 variant_border_color: dawnColors.colors_outline_button_labels || '#387cc9',
                 variant_hover_border_color: dawnColors.colors_outline_button_labels || '#387cc9',
-                selected_subscription_text_color: dawnColors.colors_outline_button_labels || '#fff',
+                selected_subscription_text_color: dawnColors.colors_solid_button_labels || '#fff',
             }
         }
 

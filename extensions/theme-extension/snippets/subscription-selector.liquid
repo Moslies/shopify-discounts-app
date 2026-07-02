@@ -1,32 +1,35 @@
 
 {%- if product.selling_plan_groups.size > 0 -%}
-  <div class="yx-subscription-container">
-    <div class="yx-sub-cards-wrapper">
-      {%- for selling_plan_group in product.selling_plan_groups -%}
-        <div class="yx-sub-card">
-          <div class="yx-sub-card__header">
-            <div class="yx-sub-card__title-price">
-              <h3 class="yx-sub-card__title">Subscribe &amp; Save</h3>
-            </div>
-            <div class="yx-sub-card__benefits">
-              <div class="yx-sub-benefit yx-sub-save-benefit" style="display: none;">
-                <span class="yx-sub-benefit__icon">✓</span>
-                <span class="yx-sub-save-rate"></span>
-              </div>
-              {% comment %} <div class="yx-sub-benefit">
-                <span class="yx-sub-benefit__icon">✓</span>
-                <span>Free shipping</span>
-              </div> {% endcomment %}
-              <div class="yx-sub-benefit">
-                <span class="yx-sub-benefit__icon">✓</span>
-                <span>No commitment. Cancel anytime</span>
-              </div>
-            </div>
+  {%- assign card_group_id = product.id -%}
+  <div 
+        class="yx-sub-card"
+        style="{% if show_card_shadow %}box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);{% endif %}"
+  >
+    <div class="yx-sub-card__header">
+          <div class="yx-sub-card__title">
+            <span></span>
+            <h3 class="yx-sub-card__title-text">Subscribe &amp; Save</h3>
+            <span></span>
           </div>
-
-          <div class="yx-sub-card__body">
-            <div class="yx-sub-card__label">Deliver every:</div>
-            <div class="yx-sub-delivery-buttons">
+          {% comment %} <div class="yx-sub-card__benefits">
+            <div class="yx-sub-benefit yx-sub-save-benefit" style="display: none;">
+              <span class="yx-sub-benefit__icon">✓</span>
+              <span class="yx-sub-save-rate"></span>
+            </div>
+            <div class="yx-sub-benefit">
+              <span class="yx-sub-benefit__icon">✓</span>
+              <span>Free shipping</span>
+            </div>
+            <div class="yx-sub-benefit">
+              <span class="yx-sub-benefit__icon">✓</span>
+              <span>No commitment. Cancel anytime</span>
+            </div>
+          </div> {% endcomment %}
+    </div>
+    <div class="yx-sub-card__body">
+          <div class="yx-sub-card__label">Deliver every:</div>
+          <div class="yx-sub-delivery-buttons">
+            {%- for selling_plan_group in product.selling_plan_groups -%}
               {%- for plan in selling_plan_group.selling_plans -%}
                 {%- assign plan_id = plan.id -%}
                 {%- assign plan_name = plan.name -%}
@@ -41,8 +44,9 @@
                   class="yx-delivery-btn" 
                   data-plan-id="{{ plan_id }}"
                   data-discount-rate="{{ discount_rate }}"
-                  data-plan-name="{{ plan_name }}"
-                  data-plan-group-id="{{ selling_plan_group.id }}"
+                  data-plan-name="{{ plan_name | escape }}"
+                  data-plan-group-id="{{ card_group_id }}"
+                  data-interval="{{ plan.options[0].value | escape }}"
                 >
                   <span class="yx-delivery-btn__text">{{ plan.options[0].value }}</span>
                   {%- if discount_percentage > 0 -%}
@@ -50,48 +54,37 @@
                   {%- endif -%}
                 </button>
               {%- endfor -%}
-            </div>
+            {%- endfor -%}
           </div>
-        </div>
-        
-        <input 
-          type="radio"
-          name="purchase_type_{{ product.id }}"
-          value="subscription"
-          class="yx-purchase-type-radio"
-          data-purchase-type="subscription"
-          data-plan-group-id="{{ selling_plan_group.id }}"
-          style="display: none;"
-        >
-        <input 
-          type="hidden"
-          name="selling_plan_{{ product.id }}"
-          class="yx-selling-plan-hidden"
-          data-plan-group-id="{{ selling_plan_group.id }}"
-        >
-      {%- endfor -%}
     </div>
   </div>
+  <input 
+        type="radio"
+        name="purchase_type_{{ product.id }}"
+        value="subscription"
+        class="yx-purchase-type-radio"
+        data-purchase-type="subscription"
+        data-plan-group-id="{{ card_group_id }}"
+        style="display: none;"
+  >
+  <input 
+    type="hidden"
+    name="selling_plan_{{ product.id }}"
+    class="yx-selling-plan-hidden"
+    data-plan-group-id="{{ card_group_id }}"
+  >
 {%- endif -%}
 
 {% style %}
-.yx-subscription-container {
-  width: 100%;
-}
-
-.yx-sub-cards-wrapper {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
 
 .yx-sub-card {
-  border: 2px solid #d6d8dc;
-  border-radius: 16px;
   padding: 20px;
   background: #fff;
   cursor: pointer;
   transition: all 0.2s ease;
+  margin: auto;
+  border-radius: 8px;
+  margin-bottom: 24px;
 }
 
 .yx-sub-card__header {
@@ -99,12 +92,24 @@
   gap: 16px;
 }
 
-.yx-sub-card__title-price {
-  flex: 1;
-  margin-bottom: 12px;
-}
-
 .yx-sub-card__title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  column-gap: 10px;
+  margin: 12px 0px;
+  color: var(--selected_variant_text_color, #111827);
+}
+.yx-sub-card__title  span:first-child, .yx-sub-card__title  span:last-child {
+  display: block;
+  height: 2px;
+  flex-grow: 1;
+  background: var(--selected_variant_text_color, #d6d8dc);
+}
+.yx-sub-card__title-text {
   font-size: 18px;
   font-weight: 700;
   margin: 0 0 8px 0;

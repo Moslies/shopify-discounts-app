@@ -79,42 +79,16 @@
     </span>
     <span></span>
   </div>
-  {%- comment -%} Single 选项（原价）{%- endcomment -%}
-  <label class="bundle-option" data-qty="1">
-    <div class="bundle-left">
-        <div class="bundle-option-content">
-            <input class="yx-option__radio" style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="1" checked>
-            <div>
-                <div class="bundle-name">Single</div>
-                <div class="bundle-desc">Standard price</div>
-            </div>
-        
-        </div>
-        <div class="bundle-variant" style="min-height: {{ variant_flag }}px;">
-              <div class="variant-specification">
-                  {{ product.options | join: ' / ' }}
-              </div>
-              <div class="variant-select-wrapper">
-                <select class="bundle-single-select variant-select">
-                    {% for variant in product.variants %}
-                        <option value="{{ variant.id }}" 
-                                data-price="{{ variant.price }}"
-                                data-available="{{ variant.available }}"{% unless variant.available %} disabled{% endunless %}>
-                            {{ variant.title }}{% unless variant.available %} - Sold out{% endunless %}
-                        </option>
-                    {% endfor %}
-                </select>
-                <div class="variant-availability-message"></div>
-              </div>
-        </div>
-    </div>
-    
-    <div class="bundle-right">
-      <div class="bundle-price">
-        {{ product.selected_or_first_available_variant.price | money }}
-      </div>
-    </div>
-  </label>
+  {%- comment -%} 默认变体选择器（隐藏，供JS读取） {%- endcomment -%}
+  <select class="bundle-single-select" style="display:none;" aria-hidden="true">
+    {% for variant in product.variants %}
+      <option value="{{ variant.id }}"
+              data-price="{{ variant.price }}"
+              data-available="{{ variant.available }}"{% unless variant.available %} disabled{% endunless %}>
+        {{ variant.title }}{% unless variant.available %} - Sold out{% endunless %}
+      </option>
+    {% endfor %}
+  </select>
 
   {%- comment -%} 阶梯选项（从 metafield 动态渲染）{%- endcomment -%}
   <div id="bundle-tier-options"></div>
@@ -134,11 +108,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1;
   column-gap: 10px;
-  margin: 16px 0px;
+  margin: 12px 0px;
   color: var(--selected_variant_text_color, #111827);
 }
 .bundle-title span:first-child, .bundle-title span:last-child {
@@ -223,6 +197,27 @@
   font-size: 13px;
 }
 
+.bundle-subscribe-item {
+  gap: 8px;
+}
+
+.subscribe-item {
+  display: none;
+}
+
+.subscribe-item-content {
+  font-size: 13px;
+  color: #777;
+}
+
+.bundle-selector.has-subscription .bundle-price-item .bundle-price {
+  color: #22c55e;
+}
+
+.bundle-selector.has-subscription .subscribe-item {
+  display: block;
+}
+
 .bundle-save-badge {
   background: #d9d9d9;
   border-radius: 8px;
@@ -243,7 +238,7 @@
 }
 
 .bundle-option:has(input:checked) .bundle-variant {
-  min-height: var(--variant-height);
+  height: var(--variant-height);
   transition: all var(--variant-qty) ease;
 }
 .bundle-option.unavailable {
@@ -263,18 +258,15 @@
 
 .variant-availability-message {
   display: none;
-  margin-top: 4px;
-  padding: 8px;
-  border: 1px solid #f5c2c7;
-  background: #fdecea;
-  border-radius: 6px;
   color: #d32f2f;
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: 12px;
 }
 
 
 .variant-select-wrapper.unavailable .variant-availability-message {
+  position: absolute;
+  top: 6px;
+  left: 10px;
   display: block;
 }
 
