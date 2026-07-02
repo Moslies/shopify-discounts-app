@@ -90,7 +90,7 @@
             </div>
         
         </div>
-        <div class="bundle-variant" style="height: {{ variant_flag }}px;">
+        <div class="bundle-variant" style="min-height: {{ variant_flag }}px;">
               <div class="variant-specification">
                   {{ product.options | join: ' / ' }}
               </div>
@@ -243,7 +243,7 @@
 }
 
 .bundle-option:has(input:checked) .bundle-variant {
-  height: var(--variant-height);
+  min-height: var(--variant-height);
   transition: all var(--variant-qty) ease;
 }
 .bundle-option.unavailable {

@@ -32,7 +32,7 @@ redirect_urls = [
  ]
 
 [app_proxy]
-url = "https://example.com/app/proxy/theme-colors"
+url = "https://shopify-discounts-app-production.up.railway.app/app/proxy/theme-colors"
 subpath = "theme"
 prefix = "apps"
 
