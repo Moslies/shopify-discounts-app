@@ -76,9 +76,9 @@ class SubscriptionSelectorWidget extends HTMLElement {
   updateTitle(percent) {
     const title = this.querySelector('.yx-sub-card__title-text')
     if (percent > 0) {
-      title.textContent = 'Subscribe & Save';
+      title.textContent = 'SUBSCRIBE & SAVE';
     } else {
-      title.textContent = 'Subscribe';
+      title.textContent = 'SUBSCRIBE';
     }
   }
   updateSaveRate(discountRate) {
