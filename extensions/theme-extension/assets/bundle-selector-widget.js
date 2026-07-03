@@ -425,7 +425,7 @@ class BundleSelectorWidget extends HTMLElement {
                   </div>
                 </div>
                 <div class="bundle-subscribe-item">
-                    <div class="product-discount" style="${productDiscount > 0 ? '' : 'display:none'}">On sale ${productDiscount}% off</div>
+                    <div class="product-discount" style="${productDiscount > 0 ? '' : 'display:none'}"></div>
                     <div class="bundle-desc" style="${discountValue > 0 ? '' : 'display:none'}">
                       ${discountType === 'fixed_amount' ? `Bundle ${this.formatMoney(discountValue * 100)} off each` : `Bundle ${discountValue}% off`}
                     </div>
