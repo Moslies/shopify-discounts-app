@@ -20,6 +20,8 @@ class BundleSelectorWidget extends HTMLElement {
     this.specification = this.container.dataset.specification || '';
     this.tiers = JSON.parse(this.container.dataset.tiers || '[]');
     this.variantFlag = parseInt(this.container.dataset.variantFlag || '0', 10);
+    this.compareAtPrice = parseInt(this.container.dataset['compare_at_price'] || '0', 10);
+    this.basePrice = parseInt(this.container.dataset.basePrice || '0', 10);
     this.tierContainer = this.container.querySelector('#bundle-tier-options');
     this.variantSelect = this.container.querySelector('.bundle-single-select');
 
@@ -90,6 +92,18 @@ class BundleSelectorWidget extends HTMLElement {
   getSelectPrice(select) {
     const selected = select.options[select.selectedIndex];
     return parseInt(selected?.dataset.price || '0', 10);
+  }
+
+  getBundleBasePrice() {
+    // 返回商品的基础售价（sale price），优先使用 data-base-price，再回退到 select 上的价格
+    return this.basePrice > 0 ? this.basePrice : this.getSelectPrice(this.variantSelect);
+  }
+
+  getProductDiscount() {
+    if (this.compareAtPrice > this.basePrice) {
+      return Math.round(((this.compareAtPrice - this.basePrice) / this.compareAtPrice) * 100);
+    }
+    return 0;
   }
 
   getCurrencyCode() {
@@ -174,17 +188,19 @@ class BundleSelectorWidget extends HTMLElement {
   updateSinglePrice() {
     const priceEl = this.container.querySelector('.bundle-option[data-qty="1"] .bundle-price');
     if (!priceEl) return;
-    const originalTotal = this.getSelectPrice(this.variantSelect);
-    let price = originalTotal;
+    // 使用当前选中的规格价格作为基础售卖价
+    const selectedBase = this.getSelectPrice(this.variantSelect);
+    let bundlePrice = selectedBase;
     const subDiscount = parseFloat(this.subscriptionDiscount || 0);
     if (subDiscount > 0) {
-      price = Math.round(price * (1 - subDiscount / 100));
+      bundlePrice = Math.round(bundlePrice * (1 - subDiscount / 100));
     }
-    priceEl.textContent = this.formatMoney(price);
+    priceEl.textContent = this.formatMoney(bundlePrice);
 
     const label = priceEl.closest('.bundle-option');
     if (label) {
-      const totalSaved = originalTotal - price;
+      const crossedOriginal = this.compareAtPrice > 0 ? this.compareAtPrice : selectedBase;
+      const totalSaved = crossedOriginal - bundlePrice;
       const saveBadge = label.querySelector('.bundle-save-badge');
       const originalPriceEl = label.querySelector('.bundle-original-price');
       if (saveBadge) {
@@ -197,6 +213,17 @@ class BundleSelectorWidget extends HTMLElement {
       }
       if (originalPriceEl) {
         originalPriceEl.style.display = totalSaved > 0 ? '' : 'none';
+        originalPriceEl.textContent = this.formatMoney(crossedOriginal);
+      }
+
+      // 更新 product-discount 文案（基于当前选中规格）
+      const productDiscountEl = label.querySelector('.product-discount');
+      if (productDiscountEl) {
+        const productDiscountPercent = this.compareAtPrice > selectedBase
+          ? Math.round(((this.compareAtPrice - selectedBase) / this.compareAtPrice) * 100)
+          : 0;
+        productDiscountEl.style.display = productDiscountPercent > 0 ? '' : 'none';
+        productDiscountEl.textContent = productDiscountPercent > 0 ? `On sale ${productDiscountPercent}% OFF` : '';
       }
     }
     this.updateSubscribePrice(label);
@@ -204,29 +231,41 @@ class BundleSelectorWidget extends HTMLElement {
 
   updateTierPrice(label) {
     const tierSelects = Array.from(label.querySelectorAll('.bundle-tier-select'));
-    const originalTotal = tierSelects.reduce((sum, select) => sum + this.getSelectPrice(select), 0);
+    const qty = tierSelects.length;
+
+    // baseTotal: 使用每个已选择规格的价格求和（支持不同规格价格不同）
+    let baseTotal = 0;
+    if (tierSelects.length > 0) {
+      baseTotal = tierSelects.reduce((sum, select) => sum + this.getSelectPrice(select), 0);
+    } else {
+      baseTotal = this.getBundleBasePrice() * qty;
+    }
+    // originalCrossed: 如果存在 compareAtPrice 则显示为原价，总和为 compareAtPrice * qty
+    const originalCrossed = this.compareAtPrice > 0 ? this.compareAtPrice * qty : baseTotal;
+
     const discountValue = parseFloat(label.dataset.discountValue || '0');
     const discountType = label.dataset.discountType || 'percentage';
 
     let discountedTotal;
 
     if (discountType === 'fixed_amount') {
-      const qty = tierSelects.length;
       const discountCents = discountValue * 100 * qty;
-      discountedTotal = Math.max(0, originalTotal - discountCents);
+      discountedTotal = Math.max(0, baseTotal - discountCents);
     } else {
-      discountedTotal = Math.round(originalTotal * (1 - discountValue / 100));
+      discountedTotal = Math.round(baseTotal * (1 - discountValue / 100));
     }
 
-    // 叠加订阅折扣
+    // 叠加订阅折扣（bundle-price 应包含订阅折扣）
     const subDiscount = parseFloat(this.subscriptionDiscount || 0);
     if (subDiscount > 0) {
       discountedTotal = Math.round(discountedTotal * (1 - subDiscount / 100));
     }
 
+    // discountedTotal 为捆绑后的售价（包含订阅折扣，如果存在）
+
     label.querySelector('.bundle-price').textContent = this.formatMoney(discountedTotal);
-    label.querySelector('.bundle-original-price').textContent = this.formatMoney(originalTotal);
-    const totalSaved = originalTotal - discountedTotal;
+    label.querySelector('.bundle-original-price').textContent = this.formatMoney(originalCrossed);
+    const totalSaved = originalCrossed - discountedTotal;
     const saveBadge = label.querySelector('.bundle-save-badge');
     if (saveBadge) {
       if (totalSaved > 0) {
@@ -239,6 +278,17 @@ class BundleSelectorWidget extends HTMLElement {
     const originalPriceEl = label.querySelector('.bundle-original-price');
     if (originalPriceEl) {
       originalPriceEl.style.display = totalSaved > 0 ? '' : 'none';
+    }
+
+    // 更新 product-discount（基于当前每个规格的售卖价平均）
+    const productDiscountEl = label.querySelector('.product-discount');
+    if (productDiscountEl) {
+      const avgBase = qty > 0 ? Math.round(baseTotal / qty) : 0;
+      const productDiscountPercent = this.compareAtPrice > avgBase
+        ? Math.round(((this.compareAtPrice - avgBase) / this.compareAtPrice) * 100)
+        : 0;
+      productDiscountEl.style.display = productDiscountPercent > 0 ? '' : 'none';
+      productDiscountEl.textContent = productDiscountPercent > 0 ? `On sale ${productDiscountPercent}% OFF` : '';
     }
 
     this.updateSubscribePrice(label);
@@ -313,28 +363,39 @@ class BundleSelectorWidget extends HTMLElement {
     }
 
     const popularIndex = (this.popularIndexs - 2) + (hasQty1Tier ? 1 : 0);
-    const basePrice = this.getSelectPrice(this.variantSelect);
+    const basePrice = this.getBundleBasePrice();
     const mergedTiers = this.mergeTiers(this.tiers, basePrice);
 
     mergedTiers.forEach((tier, index) => {
       const qty = tier.minQuantity;
       const discountValue = parseFloat(tier.value);
       const discountType = tier.type || 'percentage';
-      const originalTotal = basePrice * qty;
+      // baseTotal 使用商品售卖价（不含 compare_at_price），originalCrossed 使用 compare_at_price（若存在）
+      const baseTotal = basePrice * qty;
+      const originalCrossed = this.compareAtPrice > 0 ? this.compareAtPrice * qty : baseTotal;
 
       let discountedTotal;
       let savedAmount;
       if (discountType === 'fixed_amount') {
         const discountCents = discountValue * 100 * qty;
-        discountedTotal = Math.max(0, originalTotal - discountCents);
-        savedAmount = originalTotal - discountedTotal;
+        discountedTotal = Math.max(0, baseTotal - discountCents);
+        const subDiscount = parseFloat(this.subscriptionDiscount || 0);
+        if (subDiscount > 0) {
+          discountedTotal = Math.round(discountedTotal * (1 - subDiscount / 100));
+        }
+        savedAmount = originalCrossed - discountedTotal;
       } else {
-        discountedTotal = Math.round(originalTotal * (1 - discountValue / 100));
-        savedAmount = originalTotal - discountedTotal;
+        discountedTotal = Math.round(baseTotal * (1 - discountValue / 100));
+        const subDiscount = parseFloat(this.subscriptionDiscount || 0);
+        if (subDiscount > 0) {
+          discountedTotal = Math.round(discountedTotal * (1 - subDiscount / 100));
+        }
+        savedAmount = originalCrossed - discountedTotal;
       }
 
       const name = tierNames[qty] || `${qty} Pack`;
       const isPopular = index === popularIndex;
+      const productDiscount = this.getProductDiscount();
 
       const label = document.createElement('label');
       label.className = 'bundle-option';
@@ -352,11 +413,12 @@ class BundleSelectorWidget extends HTMLElement {
                     <div class="bundle-save-badge" style="${savedAmount > 0 ? '' : 'display:none'}">
                       <span>You Save</span>
                       <strong>${this.formatMoney(savedAmount)}</strong>
-                    </div>
+                    </div>  
                   </div>
                 </div>
                 <div class="bundle-subscribe-item">
-                    <div class="bundle-desc" style="${savedAmount > 0 ? '' : 'display:none'}">
+                    <div class="product-discount" style="${productDiscount > 0 ? '' : 'display:none'}">On sale ${productDiscount}% OFF</div>
+                    <div class="bundle-desc" style="${discountValue > 0 ? '' : 'display:none'}">
                       ${discountType === 'fixed_amount' ? `Bundle save ${this.formatMoney(discountValue * 100)} off each` : `Bundle save ${discountValue}%`}
                     </div>
                     <div class="subscribe-item-content"></div>
@@ -366,7 +428,7 @@ class BundleSelectorWidget extends HTMLElement {
             <div class="bundle-right">
               <div class="bundle-price-item">
                 <div class="bundle-price">${this.formatMoney(discountedTotal)}</div>
-                <div class="bundle-original-price" style="${savedAmount > 0 ? '' : 'display:none'}">${this.formatMoney(originalTotal)}</div>
+                <div class="bundle-original-price" style="${savedAmount > 0 ? '' : 'display:none'}">${this.formatMoney(originalCrossed)}</div>
               </div>
             </div>
           </div>
