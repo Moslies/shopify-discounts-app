@@ -223,7 +223,7 @@ class BundleSelectorWidget extends HTMLElement {
           ? Math.round(((this.compareAtPrice - selectedBase) / this.compareAtPrice) * 100)
           : 0;
         productDiscountEl.style.display = productDiscountPercent > 0 ? '' : 'none';
-        productDiscountEl.textContent = productDiscountPercent > 0 ? `On sale ${productDiscountPercent}% OFF` : '';
+        productDiscountEl.textContent = productDiscountPercent > 0 ? `On sale ${productDiscountPercent}% off` : '';
       }
     }
     this.updateSubscribePrice(label);
@@ -288,7 +288,7 @@ class BundleSelectorWidget extends HTMLElement {
         ? Math.round(((this.compareAtPrice - avgBase) / this.compareAtPrice) * 100)
         : 0;
       productDiscountEl.style.display = productDiscountPercent > 0 ? '' : 'none';
-      productDiscountEl.textContent = productDiscountPercent > 0 ? `On sale ${productDiscountPercent}% OFF` : '';
+      productDiscountEl.textContent = productDiscountPercent > 0 ? `On sale ${productDiscountPercent}% off` : '';
     }
 
     this.updateSubscribePrice(label);
