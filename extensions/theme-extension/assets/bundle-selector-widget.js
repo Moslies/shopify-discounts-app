@@ -123,7 +123,7 @@ class BundleSelectorWidget extends HTMLElement {
   buildVariantSelects(qty) {
     const optionsHtml = Array.from(this.variantSelect.options)
       .map((opt) => `
-          <option value="${opt.value}" data-price="${opt.dataset.price}" data-available="${opt.dataset.available}" ${opt.disabled ? 'disabled' : ''} ${opt.value === this.variantSelect.value ? 'selected' : ''}>
+          <option value="${opt.value}" data-price="${opt.dataset.price}" data-compare_at_price="${opt.dataset.compare_at_price}" data-available="${opt.dataset.available}" ${opt.disabled ? 'disabled' : ''} ${opt.value === this.variantSelect.value ? 'selected' : ''}>
             ${opt.text}
           </option>`)
       .join('');
