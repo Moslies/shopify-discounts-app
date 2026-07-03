@@ -182,12 +182,19 @@ class BundleSelectorWidget extends HTMLElement {
 
   updateSaveBadge(saveBadge, amount) {
     if (!saveBadge) return;
-    const amountEl = saveBadge.querySelector('strong');
-    if (amountEl) {
-      amountEl.textContent = this.formatMoney(amount);
-    } else {
-      saveBadge.textContent = `You Save ${this.formatMoney(amount)}`;
+    // 确保 badge 内有描述 span 和强文本 strong，若缺失则创建
+    let labelEl = saveBadge.querySelector('span');
+    if (!labelEl) {
+      labelEl = document.createElement('span');
+      labelEl.textContent = 'You Save';
+      saveBadge.appendChild(labelEl);
     }
+    let amountEl = saveBadge.querySelector('strong');
+    if (!amountEl) {
+      amountEl = document.createElement('strong');
+      saveBadge.appendChild(amountEl);
+    }
+    amountEl.textContent = this.formatMoney(amount);
   }
 
   updateSinglePrice() {
@@ -353,7 +360,13 @@ class BundleSelectorWidget extends HTMLElement {
         // 如果这是数量为1的阶梯，同步到隐藏的master select
         if (label.dataset.qty === '1') {
           this.variantSelect.value = select.value;
-          this.updateSinglePrice();
+          // 触发主选择器的 change 事件，确保所有依赖更新
+          try {
+            this.variantSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          } catch (e) {
+            // 某些环境可能不支持 Event 构造器，作为回退直接调用更新函数
+            this.updateSinglePrice();
+          }
         }
       });
     });
@@ -403,7 +416,6 @@ class BundleSelectorWidget extends HTMLElement {
 
       const name = tierNames[qty] || `${qty} Pack`;
       const isPopular = index === popularIndex;
-      const productDiscount = this.getProductDiscount();
 
       const label = document.createElement('label');
       label.className = 'bundle-option';
@@ -420,12 +432,12 @@ class BundleSelectorWidget extends HTMLElement {
                     <span>${name}</span>
                     <div class="bundle-save-badge" style="${savedAmount > 0 ? '' : 'display:none'}">
                       <span>You Save</span>
-                      <strong>${this.formatMoney(savedAmount)}</strong>
+                      <strong></strong>
                     </div>  
                   </div>
                 </div>
                 <div class="bundle-subscribe-item">
-                    <div class="product-discount" style="${productDiscount > 0 ? '' : 'display:none'}"></div>
+                    <div class="product-discount"></div>
                     <div class="bundle-desc" style="${discountValue > 0 ? '' : 'display:none'}">
                       ${discountType === 'fixed_amount' ? `Bundle ${this.formatMoney(discountValue * 100)} off each` : `Bundle ${discountValue}% off`}
                     </div>
@@ -455,6 +467,9 @@ class BundleSelectorWidget extends HTMLElement {
     if (qty1Radio) {
       qty1Radio.checked = true;
     }
+    // 确保初次渲染后价格/折扣与当前变体保持一致
+    this.updateAllTierPrices();
+    this.updateAllAvailability();
   }
 
   generateBid(number, salt = 'my_secret_key') {
@@ -500,6 +515,20 @@ class BundleSelectorWidget extends HTMLElement {
   }
 
   boundVariantSelectChange() {
+    // 当 master select 改变时，把所有 tier-select 同步到相同变体（若该 option 存在）
+    const newVal = this.variantSelect.value;
+    Array.from(this.container.querySelectorAll('.bundle-tier-select')).forEach((select) => {
+      if (select.querySelector(`option[value="${newVal}"]`)) {
+        select.value = newVal;
+        // 触发 tier-select 的 change 事件，确保其内部监听器（如 availability）生效
+        try {
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (e) {
+          // ignore
+        }
+      }
+    });
+
     this.updateSinglePrice();
     this.updateAllTierPrices();
     this.updateAvailability(this.variantSelect);
