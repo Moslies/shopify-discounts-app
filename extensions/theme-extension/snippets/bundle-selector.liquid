@@ -61,7 +61,6 @@
   class="bundle-selector" 
   data-tiers="{{ tiers_json | escape }}"
   data-compare_at_price="{{ product.selected_or_first_available_variant.compare_at_price }}"
-  data-compare_at_price="{{ '99999' }}"
   data-base-price="{{ product.selected_or_first_available_variant.price }}"
   data-variant-id="{{ product.selected_or_first_available_variant.id }}"
   data-currency-code="{{ shop.currency }}"
@@ -86,6 +85,7 @@
     {% for variant in product.variants %}
       <option value="{{ variant.id }}"
               data-price="{{ variant.price }}"
+              data-compare_at_price="{{ variant.compare_at_price }}"
               data-available="{{ variant.available }}"{% unless variant.available %} disabled{% endunless %}>
         {{ variant.title }}{% unless variant.available %} - Sold out{% endunless %}
       </option>
