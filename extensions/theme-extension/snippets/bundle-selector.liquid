@@ -79,42 +79,16 @@
     </span>
     <span></span>
   </div>
-  {%- comment -%} Single 选项（原价）{%- endcomment -%}
-  <label class="bundle-option" data-qty="1">
-    <div class="bundle-left">
-        <div class="bundle-option-content">
-            <input class="yx-option__radio" style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="1" checked>
-            <div>
-                <div class="bundle-name">Single</div>
-                <div class="bundle-desc">Standard price</div>
-            </div>
-        
-        </div>
-        <div class="bundle-variant" style="min-height: {{ variant_flag }}px;">
-              <div class="variant-specification">
-                  {{ product.options | join: ' / ' }}
-              </div>
-              <div class="variant-select-wrapper">
-                <select class="bundle-single-select variant-select">
-                    {% for variant in product.variants %}
-                        <option value="{{ variant.id }}" 
-                                data-price="{{ variant.price }}"
-                                data-available="{{ variant.available }}"{% unless variant.available %} disabled{% endunless %}>
-                            {{ variant.title }}{% unless variant.available %} - Sold out{% endunless %}
-                        </option>
-                    {% endfor %}
-                </select>
-                <div class="variant-availability-message"></div>
-              </div>
-        </div>
-    </div>
-    
-    <div class="bundle-right">
-      <div class="bundle-price">
-        {{ product.selected_or_first_available_variant.price | money }}
-      </div>
-    </div>
-  </label>
+  {%- comment -%} 默认变体选择器（隐藏，供JS读取） {%- endcomment -%}
+  <select class="bundle-single-select" style="display:none;" aria-hidden="true">
+    {% for variant in product.variants %}
+      <option value="{{ variant.id }}"
+              data-price="{{ variant.price }}"
+              data-available="{{ variant.available }}"{% unless variant.available %} disabled{% endunless %}>
+        {{ variant.title }}{% unless variant.available %} - Sold out{% endunless %}
+      </option>
+    {% endfor %}
+  </select>
 
   {%- comment -%} 阶梯选项（从 metafield 动态渲染）{%- endcomment -%}
   <div id="bundle-tier-options"></div>
@@ -130,15 +104,20 @@
 #bundle-tier-options {
   width: 100%;
 }
+.bundle-radio-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .bundle-title {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1;
   column-gap: 10px;
-  margin: 16px 0px;
+  margin: 12px 0px;
   color: var(--selected_variant_text_color, #111827);
 }
 .bundle-title span:first-child, .bundle-title span:last-child {
@@ -150,15 +129,22 @@
 .bundle-option {
   width: 100%;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
   cursor: pointer;
   position: relative;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   background: #ededed;
+}
+
+.bundle-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .bundle-option:hover {
@@ -184,16 +170,53 @@
 
 .bundle-left {
   flex: 1;
+  width: 100%;
 }
 .bundle-option-content {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
+  width: 100%;
 }
+
 .bundle-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-weight: bold;
   font-size: 16px;
+}
+.bundle-subscribe-item {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px;
+  padding-left: 28px;
+}
+.bundle-subscribe-item div {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  height:24px;
+  line-height:24px;
+  padding:0 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:600;
+  color: #9CA3AF;
+  background: #FFFFFF;
+}
+.bundle-desc {
+  /* border:1px solid #BFDBFE; */
+}
+.subscribe-item-content {
+  display: none;
+  /* border: 1px solid #D8B4FE; */
+  /* color: #7C3AED; */
+  
+}
+.bundle-option:has(input:checked) .subscribe-item-content {
+  color: #FFA500;
+}
+.bundle-option:has(input:checked) .bundle-desc {
+  color: #2563EB;
 }
 
 .bundle-name:first-child span {
@@ -201,11 +224,6 @@
   min-width: 60px;
   text-align: left;
   margin-right: 6px;
-}
-
-.bundle-desc {
-  font-size: 13px;
-  color: #777;
 }
 
 .bundle-right {
@@ -223,12 +241,44 @@
   font-size: 13px;
 }
 
+.bundle-subscribe-item {
+  gap: 8px;
+}
+
+.subscribe-item {
+  display: none;
+}
+
+/* .bundle-selector.has-subscription .bundle-price-item .bundle-price {
+  color: #22c55e;
+} */
+
+.bundle-selector.has-subscription .subscribe-item {
+  display: block;
+}
+
 .bundle-save-badge {
-  background: #d9d9d9;
-  border-radius: 8px;
-  padding: 2px 4px;
+  display: flex;
+  gap: 4px;
+  padding: 0px 12px;
+  border-radius: 12px;
   font-size: 12px;
-  font-weight: bold;
+  font-weight: 600;
+  background: #F0FDF4;
+  color: #9CA3AF;
+  border: 1px solid #9CA3AF;
+
+}
+
+.bundle-save-badge strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bundle-option:has(input:checked) .bundle-save-badge {
+  background: #A7F3D0;
+  color: #166534;
+  border: 1px solid #166534;
 }
 
 .bundle-save-text {
@@ -238,14 +288,15 @@
 
 .bundle-option .bundle-variant {
   height: 0;
+  width: 100%;
   overflow: hidden;
-  margin-top: var(--variant-margin-top);
 }
 
 .bundle-option:has(input:checked) .bundle-variant {
-  min-height: var(--variant-height);
+  height: var(--variant-height);
   transition: all var(--variant-qty) ease;
 }
+
 .bundle-option.unavailable {
   border-color: #e0e0e0;
 }
@@ -263,18 +314,15 @@
 
 .variant-availability-message {
   display: none;
-  margin-top: 4px;
-  padding: 8px;
-  border: 1px solid #f5c2c7;
-  background: #fdecea;
-  border-radius: 6px;
   color: #d32f2f;
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: 12px;
 }
 
 
 .variant-select-wrapper.unavailable .variant-availability-message {
+  position: absolute;
+  top: 6px;
+  left: 10px;
   display: block;
 }
 

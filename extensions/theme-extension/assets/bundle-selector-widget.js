@@ -2,8 +2,10 @@ class BundleSelectorWidget extends HTMLElement {
   constructor() {
     super();
     this._initialized = false;
+    this.subscriptionDiscount = 0;
     this.boundHandleCurrencyChange = this.handleCurrencyChange.bind(this);
     this.boundVariantSelectChange = this.boundVariantSelectChange.bind(this);
+    this.boundSubscriptionChange = this.handleSubscriptionChange.bind(this);
   }
 
   connectedCallback() {
@@ -31,28 +33,25 @@ class BundleSelectorWidget extends HTMLElement {
     document.addEventListener('shopify:currencyChanged', this.boundHandleCurrencyChange);
 
     this.renderTiers();
-
-    if (this.tiers.some((tier) => tier.minQuantity === 1)) {
-      const singleEl = this.container.querySelector('.bundle-option[data-qty="1"]');
-      if (singleEl) {
-        singleEl.style.display = 'none';
-        const tierRadio = this.container.querySelector('#bundle-tier-options .bundle-option[data-qty="1"] input[type="radio"]');
-        if (tierRadio) tierRadio.checked = true;
-      }
-    }
+    this.boundBundleOptionChange = this.handleBundleOptionChange.bind(this);
+    this.tierContainer.addEventListener('change', this.boundBundleOptionChange);
 
     this.updateSinglePrice();
     this.updateAllTierPrices();
     this.updateAllAvailability();
     this.handleCurrencyChange();
+    this.toggleSubscribeItems();
+    document.addEventListener('subscription:change', this.boundSubscriptionChange);
   }
 
   disconnectedCallback() {
     this.variantSelect?.removeEventListener('change', this.boundVariantSelectChange);
+    this.tierContainer?.removeEventListener('change', this.boundBundleOptionChange);
     document.removeEventListener('currency:change', this.boundHandleCurrencyChange);
     document.removeEventListener('currencyChanged', this.boundHandleCurrencyChange);
     document.removeEventListener('shopify:currency:change', this.boundHandleCurrencyChange);
     document.removeEventListener('shopify:currencyChanged', this.boundHandleCurrencyChange);
+    document.removeEventListener('subscription:change', this.boundSubscriptionChange);
   }
 
   mergeTiers(rawTiers, basePrice) {
@@ -162,10 +161,45 @@ class BundleSelectorWidget extends HTMLElement {
     }
   }
 
+  updateSaveBadge(saveBadge, amount) {
+    if (!saveBadge) return;
+    const amountEl = saveBadge.querySelector('strong');
+    if (amountEl) {
+      amountEl.textContent = this.formatMoney(amount);
+    } else {
+      saveBadge.textContent = `You Save ${this.formatMoney(amount)}`;
+    }
+  }
+
   updateSinglePrice() {
     const priceEl = this.container.querySelector('.bundle-option[data-qty="1"] .bundle-price');
     if (!priceEl) return;
-    priceEl.textContent = this.formatMoney(this.getSelectPrice(this.variantSelect));
+    const originalTotal = this.getSelectPrice(this.variantSelect);
+    let price = originalTotal;
+    const subDiscount = parseFloat(this.subscriptionDiscount || 0);
+    if (subDiscount > 0) {
+      price = Math.round(price * (1 - subDiscount / 100));
+    }
+    priceEl.textContent = this.formatMoney(price);
+
+    const label = priceEl.closest('.bundle-option');
+    if (label) {
+      const totalSaved = originalTotal - price;
+      const saveBadge = label.querySelector('.bundle-save-badge');
+      const originalPriceEl = label.querySelector('.bundle-original-price');
+      if (saveBadge) {
+        if (totalSaved > 0) {
+          this.updateSaveBadge(saveBadge, totalSaved);
+          saveBadge.style.display = '';
+        } else {
+          saveBadge.style.display = 'none';
+        }
+      }
+      if (originalPriceEl) {
+        originalPriceEl.style.display = totalSaved > 0 ? '' : 'none';
+      }
+    }
+    this.updateSubscribePrice(label);
   }
 
   updateTierPrice(label) {
@@ -175,23 +209,51 @@ class BundleSelectorWidget extends HTMLElement {
     const discountType = label.dataset.discountType || 'percentage';
 
     let discountedTotal;
-    let savedAmount;
 
     if (discountType === 'fixed_amount') {
       const qty = tierSelects.length;
       const discountCents = discountValue * 100 * qty;
       discountedTotal = Math.max(0, originalTotal - discountCents);
-      savedAmount = originalTotal - discountedTotal;
     } else {
       discountedTotal = Math.round(originalTotal * (1 - discountValue / 100));
-      savedAmount = originalTotal - discountedTotal;
+    }
+
+    // 叠加订阅折扣
+    const subDiscount = parseFloat(this.subscriptionDiscount || 0);
+    if (subDiscount > 0) {
+      discountedTotal = Math.round(discountedTotal * (1 - subDiscount / 100));
     }
 
     label.querySelector('.bundle-price').textContent = this.formatMoney(discountedTotal);
     label.querySelector('.bundle-original-price').textContent = this.formatMoney(originalTotal);
+    const totalSaved = originalTotal - discountedTotal;
     const saveBadge = label.querySelector('.bundle-save-badge');
     if (saveBadge) {
-      saveBadge.textContent = `SAVE ${this.formatMoney(savedAmount)}`;
+      if (totalSaved > 0) {
+        this.updateSaveBadge(saveBadge, totalSaved);
+        saveBadge.style.display = '';
+      } else {
+        saveBadge.style.display = 'none';
+      }
+    }
+    const originalPriceEl = label.querySelector('.bundle-original-price');
+    if (originalPriceEl) {
+      originalPriceEl.style.display = totalSaved > 0 ? '' : 'none';
+    }
+
+    this.updateSubscribePrice(label);
+  }
+
+  updateSubscribePrice(label) {
+    if (!label) return;
+    const subContentEl = label.querySelector('.subscribe-item-content');
+    if (!subContentEl) return;
+    const subDiscount = parseFloat(this.subscriptionDiscount || 0);
+    if (subDiscount > 0) {
+      subContentEl.textContent =`Subscribe save ${Math.round(subDiscount)}%`
+      subContentEl.style.display = 'block';
+    } else {
+      subContentEl.style.display = 'none';
     }
   }
 
@@ -208,7 +270,7 @@ class BundleSelectorWidget extends HTMLElement {
     if (!messageEl) return;
 
     if (!this.isOptionAvailable(option)) {
-      messageEl.textContent = 'Sorry, This variant is sold out, please choose another option.';
+      messageEl.textContent = 'sold out, please choose another option';
       if (selectWrapper) selectWrapper.classList.add('unavailable');
     } else {
       messageEl.textContent = '';
@@ -230,6 +292,11 @@ class BundleSelectorWidget extends HTMLElement {
       select.addEventListener('change', () => {
         this.updateTierPrice(label);
         this.updateAvailability(select);
+        // 如果这是数量为1的阶梯，同步到隐藏的master select
+        if (label.dataset.qty === '1') {
+          this.variantSelect.value = select.value;
+          this.updateSinglePrice();
+        }
       });
     });
   }
@@ -238,7 +305,13 @@ class BundleSelectorWidget extends HTMLElement {
     this.tierContainer.innerHTML = '';
 
     const tierNames = ['', 'Single', 'Duo', 'Trio', 'Quad'];
-    const hasQty1Tier = this.tiers.some((tier) => tier.minQuantity === 1);
+    let hasQty1Tier = this.tiers.some((tier) => tier.minQuantity === 1);
+
+    if (!hasQty1Tier) {
+      this.tiers.unshift({ minQuantity: 1, value: "0", message: "", type: "percentage" });
+      hasQty1Tier = true;
+    }
+
     const popularIndex = (this.popularIndexs - 2) + (hasQty1Tier ? 1 : 0);
     const basePrice = this.getSelectPrice(this.variantSelect);
     const mergedTiers = this.mergeTiers(this.tiers, basePrice);
@@ -268,33 +341,50 @@ class BundleSelectorWidget extends HTMLElement {
       label.dataset.qty = qty;
       label.dataset.discountValue = discountValue;
       label.dataset.discountType = discountType;
-      label.style.marginTop = '12px';
       label.innerHTML = `
-          <div class="bundle-left">
-            <div class="bundle-option-content">
-              <input class="yx-option__radio" style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="${qty}">
-              <div>
-                <div class="bundle-name">
-                  <span>${name}</span>
-                  <span class="bundle-save-badge">SAVE ${this.formatMoney(savedAmount)}</span>
+          <div class="bundle-content">
+            <div class="bundle-left">
+              <div class="bundle-option-content">
+                <div class="bundle-radio-item">
+                  <input class="yx-option__radio" style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="${qty}">
+                  <div class="bundle-name">
+                    <span>${name}</span>
+                    <div class="bundle-save-badge" style="${savedAmount > 0 ? '' : 'display:none'}">
+                      <span>You Save</span>
+                      <strong>${this.formatMoney(savedAmount)}</strong>
+                    </div>
+                  </div>
                 </div>
-                <div class="bundle-desc">${discountType === 'fixed_amount' ? `Save ${this.formatMoney(discountValue * 100)} off each` : `save ${discountValue}% off`}</div>
+                <div class="bundle-subscribe-item">
+                    <div class="bundle-desc" style="${savedAmount > 0 ? '' : 'display:none'}">
+                      ${discountType === 'fixed_amount' ? `Bundle save ${this.formatMoney(discountValue * 100)} off each` : `Bundle save ${discountValue}%`}
+                    </div>
+                    <div class="subscribe-item-content"></div>
+                  </div>
               </div>
             </div>
-            <div class="bundle-variant" style="--variant-height: ${this.variantFlag ? (qty * 44 + 22 + 'px') : 0}; --variant-margin-top: ${this.variantFlag ? '8px' : '0'}; --variant-qty: ${qty * 0.05 + 0.1}s;">
-              <div class="variant-specification">${this.specification}</div>
-              ${this.buildVariantSelects(qty)}
+            <div class="bundle-right">
+              <div class="bundle-price-item">
+                <div class="bundle-price">${this.formatMoney(discountedTotal)}</div>
+                <div class="bundle-original-price" style="${savedAmount > 0 ? '' : 'display:none'}">${this.formatMoney(originalTotal)}</div>
+              </div>
             </div>
           </div>
-          <div class="bundle-right">
-            <div class="bundle-price">${this.formatMoney(discountedTotal)}</div>
-            <div class="bundle-original-price">${this.formatMoney(originalTotal)}</div>
+          <div class="bundle-variant" style="--variant-height: ${this.variantFlag ? (qty * 44 + 22 + 'px') : 0}; --variant-qty: ${qty * 0.05 + 0.1}s;">
+            <div class="variant-specification">${this.specification}</div>
+            ${this.buildVariantSelects(qty)}
           </div>
           ${isPopular ? '<div class="popular-badge">Most Popular</div>' : ''}`;
 
       this.tierContainer.appendChild(label);
       this.attachTierSelectListeners(label);
     });
+
+    // 默认选中数量为1的选项
+    const qty1Radio = this.tierContainer.querySelector('input[value="1"]');
+    if (qty1Radio) {
+      qty1Radio.checked = true;
+    }
   }
 
   generateBid(number, salt = 'my_secret_key') {
@@ -316,8 +406,17 @@ class BundleSelectorWidget extends HTMLElement {
   }
 
   updateAllTierPrices() {
-    const tierLabels = Array.from(this.container.querySelectorAll('.bundle-option')).filter((label) => label.dataset.qty !== '1');
+    const tierLabels = Array.from(this.container.querySelectorAll('.bundle-option'));
     tierLabels.forEach((label) => this.updateTierPrice(label));
+  }
+
+  toggleSubscribeItems() {
+    const subDiscount = parseFloat(this.subscriptionDiscount || 0);
+    if (subDiscount > 0) {
+      this.container.classList.add('has-subscription');
+    } else {
+      this.container.classList.remove('has-subscription');
+    }
   }
 
   handleCurrencyChange(event) {
@@ -337,31 +436,72 @@ class BundleSelectorWidget extends HTMLElement {
     this.updateAllAvailability();
   }
 
-  getBundleSelectedVariants() {
+  handleBundleOptionChange(event) {
+    const target = event.target;
+  
+    if (!target || target.name !== 'bundle-qty') return;
+
     const selectedRadio = this.container.querySelector('input[name="bundle-qty"]:checked');
+    const selectedLabel = selectedRadio?.closest('.bundle-option');
+    const discountRate = selectedLabel?.dataset.discountValue || '';
+    const discountType = selectedLabel?.dataset.discountType || '';
+    this.boundChangeEvent({discountRate, discountType});
+  }
+
+/**
+ * 获取选中的捆绑商品变体信息
+ * 该方法用于处理捆绑商品的选中状态，并根据不同的数量返回相应的变体信息
+ * @returns {Array} 返回包含变体信息的数组，每个元素是一个对象，包含id、quantity和properties属性
+ */
+  getBundleSelectedVariants() {
+  // 获取选中的单选按钮元素
+    const selectedRadio = this.container.querySelector('input[name="bundle-qty"]:checked');
+  // 将选中的值转换为整数，默认值为1
     const selectedQty = parseInt(selectedRadio?.value || '1', 10);
+  // 获取选中单选按钮最近的.bundle-option父元素
     const selectedLabel = selectedRadio?.closest('.bundle-option');
 
+  // 如果没有选中的元素，返回空数组
     if (!selectedLabel) return [];
 
+  // 处理数量为1且数据属性qty也为1的特殊情况
     if (selectedQty === 1 && selectedLabel.dataset.qty === '1') {
+    // 返回单个变体对象，包含id、数量和属性信息
       return [{
         id: parseInt(this.variantSelect.value, 10),
         quantity: 1,
         properties: {
+        // 将捆绑信息转换为JSON字符串，包含deal、main和bid属性
           _yx_bundles: JSON.stringify({ deal: 'VIR1', main: true, bid: this.generateBid(selectedLabel.dataset.qty) })
         }
       }];
     }
 
+  // 获取所有捆绑层级选择器
     const tierSelects = Array.from(selectedLabel.querySelectorAll('.bundle-tier-select'));
+  // 返回映射后的变体数组，每个变体包含id、数量和属性信息
     return tierSelects.map((select) => ({
       id: parseInt(select.value, 10),
       quantity: 1,
       properties: {
+      // 将捆绑信息转换为JSON字符串，包含deal、main和bid属性
+      // bid值由多个数据属性生成
         _yx_bundles: JSON.stringify({ deal: 'VIR1', main: true, bid: this.generateBid(selectedLabel.dataset.qty) + this.generateBid(selectedLabel.dataset.discountValue) + this.generateBid(selectedLabel.dataset.discountType) })
       }
     }));
+  }
+  // 发布阶梯优惠变化事件
+   boundChangeEvent(detail) {
+    console.log('detail', detail)
+    document.dispatchEvent(new CustomEvent('bundle:change', { detail }));
+  }
+
+  // 订阅变化事件
+  handleSubscriptionChange(e) {
+    this.subscriptionDiscount = e.detail.discountRate;
+    this.toggleSubscribeItems();
+    this.updateSinglePrice();
+    this.updateAllTierPrices();
   }
 }
 

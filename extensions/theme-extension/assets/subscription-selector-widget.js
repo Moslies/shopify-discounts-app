@@ -2,6 +2,7 @@ class SubscriptionSelectorWidget extends HTMLElement {
   constructor() {
     super();
     this._initialized = false;
+    this.boundHandleDeliveryClick = this.handleDeliveryButtonClick.bind(this);
   }
 
   connectedCallback() {
@@ -17,13 +18,53 @@ class SubscriptionSelectorWidget extends HTMLElement {
     this.saveRateEls = this.container.querySelectorAll('.yx-sub-save-rate');
     this.saveBenefitEls = this.container.querySelectorAll('.yx-sub-save-benefit');
 
+    // this.mergeDuplicatePlans();
     this.attachEventListeners();
     this.initState();
   }
 
+  // 重复计划解决方案
+  mergeDuplicatePlans() {
+    const buttons = Array.from(this.container.querySelectorAll('.yx-delivery-btn'));
+    const uniqueButtons = new Map();
+
+    buttons.forEach((btn) => {
+      const interval = (btn.dataset.interval || '').trim().toLowerCase();
+      if (!interval) {
+        return;
+      }
+
+      const existing = uniqueButtons.get(interval);
+      const currentDiscount = parseFloat(btn.dataset.discountRate || '0');
+
+      if (!existing) {
+        uniqueButtons.set(interval, btn);
+        return;
+      }
+
+      const existingDiscount = parseFloat(existing.dataset.discountRate || '0');
+      if (currentDiscount > existingDiscount) {
+        existing.remove();
+        uniqueButtons.set(interval, btn);
+      } else {
+        btn.remove();
+      }
+    });
+
+    this.deliveryBtns = this.container.querySelectorAll('.yx-delivery-btn');
+    this.purchaseRadios = this.container.querySelectorAll('[data-purchase-type]');
+    this.planHiddens = this.container.querySelectorAll('.yx-selling-plan-hidden');
+  }
+
   attachEventListeners() {
     this.deliveryBtns.forEach((btn) => {
-      btn.addEventListener('click', (event) => this.handleDeliveryButtonClick(event, btn));
+      btn.addEventListener('click', this.boundHandleDeliveryClick);
+    });
+  }
+
+  disconnectedCallback() {
+    this.deliveryBtns.forEach((btn) => {
+      btn.removeEventListener('click', this.boundHandleDeliveryClick);
     });
   }
 
@@ -32,11 +73,18 @@ class SubscriptionSelectorWidget extends HTMLElement {
       el.style.display = 'none';
     });
   }
-
+  updateTitle(percent) {
+    const title = this.querySelector('.yx-sub-card__title-text')
+    if (percent > 0) {
+      title.textContent = 'Subscribe & Save';
+    } else {
+      title.textContent = 'Subscribe';
+    }
+  }
   updateSaveRate(discountRate) {
     const value = parseFloat(discountRate || 0);
     const percent = Number.isFinite(value) ? Math.round(value) : 0;
-
+    this.updateTitle(percent)
     this.saveRateEls.forEach((el) => {
       const benefit = el.closest('.yx-sub-benefit');
       if (percent > 0) {
@@ -49,8 +97,9 @@ class SubscriptionSelectorWidget extends HTMLElement {
     });
   }
 
-  handleDeliveryButtonClick(event, btn) {
+  handleDeliveryButtonClick(event) {
     event.stopPropagation();
+    const btn = event.currentTarget;
 
     const isSelected = btn.classList.contains('selected');
     const planId = btn.dataset.planId;
@@ -68,6 +117,8 @@ class SubscriptionSelectorWidget extends HTMLElement {
         if (hidden.dataset.planGroupId === groupId) hidden.value = '';
       });
       this.updateSaveRate(0);
+      // 清除选中状态
+      this.subscriptionChangeEvent({planId: '', groupId, discountRate: 0});
       return;
     }
 
@@ -81,6 +132,7 @@ class SubscriptionSelectorWidget extends HTMLElement {
 
     this.deliveryBtns.forEach((b) => b.classList.remove('selected'));
     btn.classList.add('selected');
+    this.subscriptionChangeEvent({planId, groupId, discountRate});
   }
 
   updateCardSelection(type, planData) {
@@ -114,6 +166,11 @@ class SubscriptionSelectorWidget extends HTMLElement {
   getSelectedSellingPlan() {
     const selectedButton = this.querySelector('.yx-delivery-btn.selected');
     return selectedButton?.dataset?.planId || '';
+  }
+
+  subscriptionChangeEvent(detail) {
+    console.log('detail', detail)
+    document.dispatchEvent(new CustomEvent('subscription:change', { detail }));
   }
 }
 
