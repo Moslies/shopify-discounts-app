@@ -73,18 +73,19 @@ class SubscriptionSelectorWidget extends HTMLElement {
       el.style.display = 'none';
     });
   }
-  updateTitle(percent) {
+  updateTitle(percent, isSelected) {
     const title = this.querySelector('.yx-sub-card__title-text')
+    if (isSelected) return title.textContent = 'SUBSCRIBE & SAVE';
     if (percent > 0) {
       title.textContent = 'SUBSCRIBE & SAVE';
     } else {
       title.textContent = 'SUBSCRIBE';
     }
   }
-  updateSaveRate(discountRate) {
+  updateSaveRate(discountRate, isSelected = false) {
     const value = parseFloat(discountRate || 0);
     const percent = Number.isFinite(value) ? Math.round(value) : 0;
-    this.updateTitle(percent)
+    this.updateTitle(percent, isSelected)
     this.saveRateEls.forEach((el) => {
       const benefit = el.closest('.yx-sub-benefit');
       if (percent > 0) {
@@ -116,7 +117,7 @@ class SubscriptionSelectorWidget extends HTMLElement {
       this.planHiddens.forEach((hidden) => {
         if (hidden.dataset.planGroupId === groupId) hidden.value = '';
       });
-      this.updateSaveRate(0);
+      this.updateSaveRate(0, isSelected);
       // 清除选中状态
       this.subscriptionChangeEvent({planId: '', groupId, discountRate: 0});
       return;
