@@ -94,6 +94,11 @@ class BundleSelectorWidget extends HTMLElement {
     return parseInt(selected?.dataset.price || '0', 10);
   }
 
+  getSelectCompareAtPrice(select) {
+    const selected = select.options[select.selectedIndex];
+    return parseInt(selected?.dataset.compare_at_price || '0', 10);
+  }
+
   getBundleBasePrice() {
     // 返回商品的基础售价（sale price），优先使用 data-base-price，再回退到 select 上的价格
     return this.basePrice > 0 ? this.basePrice : this.getSelectPrice(this.variantSelect);
@@ -190,6 +195,7 @@ class BundleSelectorWidget extends HTMLElement {
     if (!priceEl) return;
     // 使用当前选中的规格价格作为基础售卖价
     const selectedBase = this.getSelectPrice(this.variantSelect);
+    const selectedCompareAtPrice = this.getSelectCompareAtPrice(this.variantSelect);
     let bundlePrice = selectedBase;
     const subDiscount = parseFloat(this.subscriptionDiscount || 0);
     if (subDiscount > 0) {
@@ -199,7 +205,7 @@ class BundleSelectorWidget extends HTMLElement {
 
     const label = priceEl.closest('.bundle-option');
     if (label) {
-      const crossedOriginal = this.compareAtPrice > 0 ? this.compareAtPrice : selectedBase;
+      const crossedOriginal = selectedCompareAtPrice > 0 ? selectedCompareAtPrice : selectedBase;
       const totalSaved = crossedOriginal - bundlePrice;
       const saveBadge = label.querySelector('.bundle-save-badge');
       const originalPriceEl = label.querySelector('.bundle-original-price');
@@ -219,8 +225,8 @@ class BundleSelectorWidget extends HTMLElement {
       // 更新 product-discount 文案（基于当前选中规格）
       const productDiscountEl = label.querySelector('.product-discount');
       if (productDiscountEl) {
-        const productDiscountPercent = this.compareAtPrice > selectedBase
-          ? Math.round(((this.compareAtPrice - selectedBase) / this.compareAtPrice) * 100)
+        const productDiscountPercent = selectedCompareAtPrice > selectedBase
+          ? Math.round(((selectedCompareAtPrice - selectedBase) / selectedCompareAtPrice) * 100)
           : 0;
         productDiscountEl.style.display = productDiscountPercent > 0 ? '' : 'none';
         productDiscountEl.textContent = productDiscountPercent > 0 ? `On sale ${productDiscountPercent}% off` : '';
@@ -235,13 +241,16 @@ class BundleSelectorWidget extends HTMLElement {
 
     // baseTotal: 使用每个已选择规格的价格求和（支持不同规格价格不同）
     let baseTotal = 0;
+    let compareAtTotal = 0;
     if (tierSelects.length > 0) {
       baseTotal = tierSelects.reduce((sum, select) => sum + this.getSelectPrice(select), 0);
+      compareAtTotal = tierSelects.reduce((sum, select) => sum + this.getSelectCompareAtPrice(select), 0);
     } else {
       baseTotal = this.getBundleBasePrice() * qty;
+      compareAtTotal = this.compareAtPrice > 0 ? this.compareAtPrice * qty : 0;
     }
-    // originalCrossed: 如果存在 compareAtPrice 则显示为原价，总和为 compareAtPrice * qty
-    const originalCrossed = this.compareAtPrice > 0 ? this.compareAtPrice * qty : baseTotal;
+    // originalCrossed: 如果存在 compareAtTotal 则显示为原价，总和为每个选中变体的 compare_at_price
+    const originalCrossed = compareAtTotal > 0 ? compareAtTotal : baseTotal;
 
     const discountValue = parseFloat(label.dataset.discountValue || '0');
     const discountType = label.dataset.discountType || 'percentage';
@@ -280,12 +289,11 @@ class BundleSelectorWidget extends HTMLElement {
       originalPriceEl.style.display = totalSaved > 0 ? '' : 'none';
     }
 
-    // 更新 product-discount（基于当前每个规格的售卖价平均）
+    // 更新 product-discount（基于当前选中变体 compare_at_price 总和）
     const productDiscountEl = label.querySelector('.product-discount');
     if (productDiscountEl) {
-      const avgBase = qty > 0 ? Math.round(baseTotal / qty) : 0;
-      const productDiscountPercent = this.compareAtPrice > avgBase
-        ? Math.round(((this.compareAtPrice - avgBase) / this.compareAtPrice) * 100)
+      const productDiscountPercent = compareAtTotal > baseTotal
+        ? Math.round(((compareAtTotal - baseTotal) / compareAtTotal) * 100)
         : 0;
       productDiscountEl.style.display = productDiscountPercent > 0 ? '' : 'none';
       productDiscountEl.textContent = productDiscountPercent > 0 ? `On sale ${productDiscountPercent}% off` : '';
