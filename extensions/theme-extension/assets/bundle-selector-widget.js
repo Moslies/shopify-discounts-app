@@ -161,6 +161,16 @@ class BundleSelectorWidget extends HTMLElement {
     }
   }
 
+  updateSaveBadge(saveBadge, amount) {
+    if (!saveBadge) return;
+    const amountEl = saveBadge.querySelector('strong');
+    if (amountEl) {
+      amountEl.textContent = this.formatMoney(amount);
+    } else {
+      saveBadge.textContent = `You Save ${this.formatMoney(amount)}`;
+    }
+  }
+
   updateSinglePrice() {
     const priceEl = this.container.querySelector('.bundle-option[data-qty="1"] .bundle-price');
     if (!priceEl) return;
@@ -179,7 +189,7 @@ class BundleSelectorWidget extends HTMLElement {
       const originalPriceEl = label.querySelector('.bundle-original-price');
       if (saveBadge) {
         if (totalSaved > 0) {
-          saveBadge.textContent = `SAVE ${this.formatMoney(totalSaved)}`;
+          this.updateSaveBadge(saveBadge, totalSaved);
           saveBadge.style.display = '';
         } else {
           saveBadge.style.display = 'none';
@@ -220,7 +230,7 @@ class BundleSelectorWidget extends HTMLElement {
     const saveBadge = label.querySelector('.bundle-save-badge');
     if (saveBadge) {
       if (totalSaved > 0) {
-        saveBadge.textContent = `SAVE ${this.formatMoney(totalSaved)}`;
+        this.updateSaveBadge(saveBadge, totalSaved);
         saveBadge.style.display = '';
       } else {
         saveBadge.style.display = 'none';
@@ -239,7 +249,12 @@ class BundleSelectorWidget extends HTMLElement {
     const subContentEl = label.querySelector('.subscribe-item-content');
     if (!subContentEl) return;
     const subDiscount = parseFloat(this.subscriptionDiscount || 0);
-    subContentEl.textContent = subDiscount > 0 ? `Subscribe save ${Math.round(subDiscount)}% off` : '';
+    if (subDiscount > 0) {
+      subContentEl.textContent =`Subscribe save ${Math.round(subDiscount)}%`
+      subContentEl.style.display = 'block';
+    } else {
+      subContentEl.style.display = 'none';
+    }
   }
 
   isOptionAvailable(option) {
@@ -326,34 +341,38 @@ class BundleSelectorWidget extends HTMLElement {
       label.dataset.qty = qty;
       label.dataset.discountValue = discountValue;
       label.dataset.discountType = discountType;
-      label.style.marginTop = '12px';
       label.innerHTML = `
-          <div class="bundle-left">
-            <div class="bundle-option-content">
-              <input class="yx-option__radio" style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="${qty}">
-              <div>
-                <div class="bundle-name">
-                  <span>${name}</span>
-                  <span class="bundle-save-badge" style="${savedAmount > 0 ? '' : 'display:none'}">SAVE ${this.formatMoney(savedAmount)}</span>
+          <div class="bundle-content">
+            <div class="bundle-left">
+              <div class="bundle-option-content">
+                <div class="bundle-radio-item">
+                  <input class="yx-option__radio" style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="${qty}">
+                  <div class="bundle-name">
+                    <span>${name}</span>
+                    <div class="bundle-save-badge" style="${savedAmount > 0 ? '' : 'display:none'}">
+                      <span>You Save</span>
+                      <strong>${this.formatMoney(savedAmount)}</strong>
+                    </div>
+                  </div>
                 </div>
                 <div class="bundle-subscribe-item">
-                  <div class="bundle-desc">
-                    ${qty == 1 && discountValue == 0 ? 'Standard price' : discountType === 'fixed_amount' ? `Bundle save ${this.formatMoney(discountValue * 100)} off each` : `Bundle save ${discountValue}% off`}
+                    <div class="bundle-desc" style="${savedAmount > 0 ? '' : 'display:none'}">
+                      ${discountType === 'fixed_amount' ? `Bundle save ${this.formatMoney(discountValue * 100)} off each` : `Bundle save ${discountValue}%`}
+                    </div>
+                    <div class="subscribe-item-content"></div>
                   </div>
-                  <div class="subscribe-item-content"></div>
-                </div>
               </div>
             </div>
-            <div class="bundle-variant" style="--variant-height: ${this.variantFlag ? (qty * 44 + 22 + 'px') : 0}; --variant-margin-top: ${this.variantFlag ? '8px' : '0'}; --variant-qty: ${qty * 0.05 + 0.1}s;">
-              <div class="variant-specification">${this.specification}</div>
-              ${this.buildVariantSelects(qty)}
+            <div class="bundle-right">
+              <div class="bundle-price-item">
+                <div class="bundle-price">${this.formatMoney(discountedTotal)}</div>
+                <div class="bundle-original-price" style="${savedAmount > 0 ? '' : 'display:none'}">${this.formatMoney(originalTotal)}</div>
+              </div>
             </div>
           </div>
-          <div class="bundle-right">
-            <div class="bundle-price-item">
-              <div class="bundle-price">${this.formatMoney(discountedTotal)}</div>
-              <div class="bundle-original-price" style="${savedAmount > 0 ? '' : 'display:none'}">${this.formatMoney(originalTotal)}</div>
-            </div>
+          <div class="bundle-variant" style="--variant-height: ${this.variantFlag ? (qty * 44 + 22 + 'px') : 0}; --variant-qty: ${qty * 0.05 + 0.1}s;">
+            <div class="variant-specification">${this.specification}</div>
+            ${this.buildVariantSelects(qty)}
           </div>
           ${isPopular ? '<div class="popular-badge">Most Popular</div>' : ''}`;
 
