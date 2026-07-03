@@ -300,7 +300,7 @@ class BundleSelectorWidget extends HTMLElement {
     if (!subContentEl) return;
     const subDiscount = parseFloat(this.subscriptionDiscount || 0);
     if (subDiscount > 0) {
-      subContentEl.textContent =`Subscribe save ${Math.round(subDiscount)}%`
+      subContentEl.textContent =`Subscribe ${Math.round(subDiscount)}% off`
       subContentEl.style.display = 'block';
     } else {
       subContentEl.style.display = 'none';
@@ -417,9 +417,9 @@ class BundleSelectorWidget extends HTMLElement {
                   </div>
                 </div>
                 <div class="bundle-subscribe-item">
-                    <div class="product-discount" style="${productDiscount > 0 ? '' : 'display:none'}">On sale ${productDiscount}% OFF</div>
+                    <div class="product-discount" style="${productDiscount > 0 ? '' : 'display:none'}">On sale ${productDiscount}% off</div>
                     <div class="bundle-desc" style="${discountValue > 0 ? '' : 'display:none'}">
-                      ${discountType === 'fixed_amount' ? `Bundle save ${this.formatMoney(discountValue * 100)} off each` : `Bundle save ${discountValue}%`}
+                      ${discountType === 'fixed_amount' ? `Bundle ${this.formatMoney(discountValue * 100)} off each` : `Bundle ${discountValue}% off`}
                     </div>
                     <div class="subscribe-item-content"></div>
                   </div>
