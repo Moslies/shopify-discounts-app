@@ -72,7 +72,7 @@
   <div class="bundle-title">
     <span></span>
     <span>
-      {% if tiers_json.size > 0 %}
+      {% if tiers_json != '[]' and tiers_json != blank and tiers_json != null %}
         BUNDLE & SAVE
       {% else %}
         PURCHASE
@@ -187,15 +187,12 @@
 }
 .bundle-subscribe-item {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
-  padding: 8px;
   padding-left: 28px;
 }
 .bundle-subscribe-item div {
   display:inline-flex;
   align-items:center;
-  gap:4px;
   height:24px;
   line-height:24px;
   padding:0 10px;
@@ -204,6 +201,8 @@
   font-weight:600;
   color: #9CA3AF;
   background: #FFFFFF;
+  margin-right: 8px;
+  margin-top: 8px;
 }
 .bundle-desc {
   /* border:1px solid #BFDBFE; */
@@ -243,10 +242,6 @@
   text-decoration: line-through;
   color: #999;
   font-size: 14px;
-}
-
-.bundle-subscribe-item {
-  gap: 8px;
 }
 
 .subscribe-item {
