@@ -15,7 +15,7 @@ export { action };
 // Component
 // ----------------------------------------------------------------
 
-export default function DiscountListPage() {
+export default function OrderDiscountListPage() {
   const { discounts } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
@@ -58,35 +58,30 @@ export default function DiscountListPage() {
   };
 
   const handleEdit = (entry: DiscountEntry) => {
-    navigate(`/app/discounts/${entry.id}`);
+    navigate(`/app/discounts/order-discount/${entry.id}`);
   };
 
   return (
-    <s-page heading="Discount Rules">
-      <s-button slot="primary-action" variant="primary" onClick={() => navigate("/app/discounts/new")}>
-        Add Discount
-      </s-button>
-
-      <s-button slot="secondary-action" variant="tertiary" onClick={() => navigate("/app/discounts/cleanup")}>
-        Clean Up Orphans
+    <s-page heading="Order Discounts">
+      <s-button slot="primary-action" variant="primary" onClick={() => navigate("/app/discounts/order-discount/new")}>
+        Add Order Discount
       </s-button>
 
       {local.length === 0 ? (
         <s-banner>
           <s-paragraph>
-            No discounts yet. Create one to get started.
+            No order discounts yet. Create one to get started.
           </s-paragraph>
         </s-banner>
       ) : (
-        <s-section heading={`All Discounts (${local.length})`}>
+        <s-section heading={`All Order Discounts (${local.length})`}>
           <s-box padding="base" borderWidth="large-100" borderRadius="base">
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--s-border-color, #ccc)" }}>
                   <th style={{ textAlign: "left", padding: "8px 12px" }}>Title</th>
-                  <th style={{ textAlign: "left", padding: "8px 12px", width: "15%" }}>Scope</th>
                   <th style={{ textAlign: "left", padding: "8px 12px", width: "12%" }}>Type</th>
-                  <th style={{ textAlign: "left", padding: "8px 12px" }}>Quantity</th>
+                  <th style={{ textAlign: "left", padding: "8px 12px", width: "15%" }}>Min Amount</th>
                   <th style={{ textAlign: "left", padding: "8px 12px", width: "15%" }}>Status</th>
                   <th style={{ textAlign: "center", padding: "8px 12px", width: "18%" }}>Actions</th>
                 </tr>
@@ -102,19 +97,14 @@ export default function DiscountListPage() {
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       <s-text color="subdued">
-                        {entry.scope === "product" ? "Product" : "Order"}
-                      </s-text>
-                    </td>
-                    <td style={{ padding: "10px 12px" }}>
-                      <s-text color="subdued">
                         {entry.type === "percentage" ? "% off" : "$ off"}
                       </s-text>
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       <s-text color="subdued">
                         {entry.tiers && entry.tiers.length > 1
-                          ? `${entry.tiers.length} tiers (${entry.tiers.map((t) => t.minQuantity).join("/")})`
-                          : `min ${entry.minQuantity} item${entry.minQuantity > 1 ? "s" : ""}`}
+                          ? `${entry.tiers.length} tiers (min $${entry.tiers.map((t) => t.minQuantity).join("/$")})`
+                          : `min $${entry.minQuantity}`}
                       </s-text>
                     </td>
                     <td style={{ padding: "10px 12px" }}>

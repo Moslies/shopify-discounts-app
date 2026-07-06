@@ -375,7 +375,6 @@ class BundleSelectorWidget extends HTMLElement {
   renderTiers() {
     this.tierContainer.innerHTML = '';
 
-    const tierNames = ['', 'Single', 'Duo', 'Trio', 'Quad'];
     let hasQty1Tier = this.tiers.some((tier) => tier.minQuantity === 1);
 
     if (!hasQty1Tier) {
@@ -383,7 +382,6 @@ class BundleSelectorWidget extends HTMLElement {
       hasQty1Tier = true;
     }
 
-    const popularIndex = (this.popularIndexs - 2) + (hasQty1Tier ? 1 : 0);
     const basePrice = this.getBundleBasePrice();
     const mergedTiers = this.mergeTiers(this.tiers, basePrice);
 
@@ -414,8 +412,8 @@ class BundleSelectorWidget extends HTMLElement {
         savedAmount = originalCrossed - discountedTotal;
       }
 
-      const name = tierNames[qty] || `${qty} Pack`;
-      const isPopular = index === popularIndex;
+      // todo: 热门套餐索引显示
+      const isPopular = true
 
       const label = document.createElement('label');
       label.className = 'bundle-option';
@@ -429,7 +427,7 @@ class BundleSelectorWidget extends HTMLElement {
                 <div class="bundle-radio-item">
                   <input class="yx-option__radio" style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="${qty}">
                   <div class="bundle-name">
-                    <span>${name}</span>
+                    <span>${qty} Pack</span>
                     <div class="bundle-save-badge" style="${savedAmount > 0 ? '' : 'display:none'}">
                       <span>You Save</span>
                       <strong></strong>

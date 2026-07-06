@@ -5,5 +5,6 @@ import { readConfig } from "@/lib/discount-helpers.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
   const { config } = await readConfig(admin);
-  return { discounts: config.discounts };
+  const discounts = config.discounts.filter((d) => d.scope === "order");
+  return { discounts };
 };

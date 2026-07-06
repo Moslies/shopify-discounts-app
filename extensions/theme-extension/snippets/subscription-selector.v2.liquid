@@ -5,16 +5,29 @@
         class="yx-sub-card"
         style="{% if show_card_shadow %}box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);{% endif %}"
   >
-    {% if title != blank %}
-      <div class="yx-sub-card__header">
-            <div class="yx-sub-card__title">
-              <span></span>
-              <h3 class="yx-sub-card__title-text">{{ title }}</h3>
-              <span></span>
+    <div class="yx-sub-card__header">
+          <div class="yx-sub-card__title">
+            <span></span>
+            <h3 class="yx-sub-card__title-text">SUBSCRIBE &amp; SAVE</h3>
+            <span></span>
+          </div>
+          {% comment %} <div class="yx-sub-card__benefits">
+            <div class="yx-sub-benefit yx-sub-save-benefit" style="display: none;">
+              <span class="yx-sub-benefit__icon">✓</span>
+              <span class="yx-sub-save-rate"></span>
             </div>
-      </div>
-    {% endif %}
+            <div class="yx-sub-benefit">
+              <span class="yx-sub-benefit__icon">✓</span>
+              <span>Free shipping</span>
+            </div>
+            <div class="yx-sub-benefit">
+              <span class="yx-sub-benefit__icon">✓</span>
+              <span>No commitment. Cancel anytime</span>
+            </div>
+          </div> {% endcomment %}
+    </div>
     <div class="yx-sub-card__body">
+          <div class="yx-sub-card__label">Deliver every:</div>
           <div class="yx-sub-delivery-buttons">
             {%- for selling_plan_group in product.selling_plan_groups -%}
               {%- for plan in selling_plan_group.selling_plans -%}
@@ -27,25 +40,19 @@
                   {%- endif -%}
                 {%- endfor -%}
                 {%- assign discount_percentage = discount_rate | round -%}
-                <label class="yx-delivery-btn" 
+                <button type="button" 
+                  class="yx-delivery-btn" 
                   data-plan-id="{{ plan_id }}"
                   data-discount-rate="{{ discount_rate }}"
                   data-plan-name="{{ plan_name | escape }}"
                   data-plan-group-id="{{ card_group_id }}"
                   data-interval="{{ plan.options[0].value | escape }}"
                 >
-                  <input type="checkbox" name="plan_{{ card_group_id }}" class="yx-delivery-btn__radio" value="{{ plan_id }}">
-                  <div class="yx-delivery-btn__content">
-                    {% comment %} <span class="yx-delivery-btn__text">{{ plan.options[0].value }}</span> {% endcomment %}
-                    {%- if discount_percentage > 0 -%}
-                      <div class="yx-delivery-btn__price">
-                          <span>Subscribe & save</span>
-                          <span class="yx-delivery-btn__badge">SAVE {{ discount_percentage }}%</span>
-                      </div>
-                    {%- endif -%}
-                    <div>{{ plan_name }}</div>
-                  </div>
-                </label>
+                  <span class="yx-delivery-btn__text">{{ plan.options[0].value }}</span>
+                  {%- if discount_percentage > 0 -%}
+                    <span class="yx-delivery-btn__badge">save {{ discount_percentage }}%</span>
+                  {%- endif -%}
+                </button>
               {%- endfor -%}
             {%- endfor -%}
           </div>
@@ -142,47 +149,38 @@
   gap: 12px;
 }
 
-.yx-sub-delivery-buttons {
-  wwidth: 100%;
+.yx-sub-card__label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
 }
 
-.yx-sub-delivery-buttons .yx-delivery-btn {
-  width: 100%;
-  margin-bottom: 12px;
+.yx-sub-delivery-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.yx-delivery-btn {
+  flex: 1 1 100px;
   padding: 12px 14px;
-  border: 1px dashed var(--selected_variant_border_color, #2563eb);
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  background: #ffffff;
+  background: #f5f5f5;
   cursor: pointer;
-  color: var(--selected_variant_text_color, #555);
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
   transition: all 0.2s ease;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 4px;
   min-height: 60px;
-  text-align: left;
-}
-.yx-delivery-btn input {
-  border-color: var(--selected_variant_border_color, initial);
-}
-.yx-delivery-btn__radio {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  flex-shrink: 0;
+  justify-content: center;
+  text-align: center;
 }
 
-.yx-delivery-btn__content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
-.yx-delivery-btn__price {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
 .yx-delivery-btn:hover {
   background: #ffffff;
   border-color: var(--selected_variant_border_color, #2563eb);
@@ -191,7 +189,8 @@
 }
 
 .yx-delivery-btn.selected {
-  background: #fff;
+  background: var(--selected_variant_border_color, #2563eb);
+  color: var(--selected_subscription_text_color, #fff);
   border-color: var(--selected_variant_border_color, #2563eb);
 }
 
@@ -204,16 +203,13 @@
 
 .yx-delivery-btn__badge {
   display: block;
-  padding: 0px 6px;
-  border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
-  background: var(--selected_variant_border_color, #2563eb);
-  color: var(--badge_text_color, #111827);
+  color: #9CA3AF;
 }
 
-/* .yx-delivery-btn.selected .yx-delivery-btn__badge {
+.yx-delivery-btn.selected .yx-delivery-btn__badge {
   color: #ffa500;
-} */
+}
 
 {% endstyle %}

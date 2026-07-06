@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { HeadersFunction } from "react-router";
-import { useFetcher, useNavigate } from "react-router";
+import { useFetcher, useLoaderData, useNavigate } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import ProductPickerDialog from "@/components/ProductPickerDialog";
 
+import { loader } from "./loader.server";
+export { loader };
 import { action } from "./action.server";
 export { action };
 
@@ -12,26 +14,28 @@ export { action };
 // Component
 // ----------------------------------------------------------------
 
-export default function NewDiscountPage() {
+export default function EditTieredDiscountPage() {
+  const { entry, productMap: initialProductMap } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const navigate = useNavigate();
   const shopify = useAppBridge();
+
   const isSaving =
     ["loading", "submitting"].includes(fetcher.state) &&
     fetcher.formMethod === "POST";
 
-  // Form state
-  const [title, setTitle] = useState("");
-  const [type, setType] = useState<"percentage" | "fixed_amount">("percentage");
-  const [scope, setScope] = useState<"order" | "product">("product");
-  const [discountTiers, setDiscountTiers] = useState<{ minQuantity: number; value: string; message?: string }[]>([
-    { minQuantity: 2, value: "10", message: "" },
-  ]);
-  const [active, setActive] = useState(true);
+  const [title, setTitle] = useState(entry.title);
+  const [type, setType] = useState<"percentage" | "fixed_amount">(entry.type);
+  const [discountTiers, setDiscountTiers] = useState<{ minQuantity: number; value: string; message?: string }[]>(
+    entry.tiers && entry.tiers.length > 0
+      ? entry.tiers
+      : [{ minQuantity: entry.minQuantity, value: entry.value, message: "" }]
+  );
+  const [active, setActive] = useState(entry.active);
 
   // Product selection state
-  const [productIds, setProductIds] = useState<string[]>([]);
-  const [productNames, setProductNames] = useState<Record<string, string>>({});
+  const [productIds, setProductIds] = useState<string[]>(entry.productIds || []);
+  const [productNames, setProductNames] = useState<Record<string, string>>(initialProductMap || {});
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const addTier = () => {
@@ -58,8 +62,8 @@ export default function NewDiscountPage() {
   // On success, redirect to list
   useEffect(() => {
     if (fetcher.data?.ok && fetcher.state === "idle") {
-      shopify.toast.show("Discount created");
-      navigate("/app/discounts");
+      shopify.toast.show("Discount updated");
+      navigate("/app/discounts/tiered-discount");
     } else if (fetcher.data?.ok === false && fetcher.data?.errors) {
       shopify.toast.show(`Error: ${fetcher.data.errors[0]}`);
     }
@@ -71,9 +75,9 @@ export default function NewDiscountPage() {
     e.preventDefault();
     fetcher.submit(
       {
+        entryId: entry.id,
         title,
         type,
-        scope,
         active: String(active),
         discountTiers: JSON.stringify(sortedTiers),
         productIds: JSON.stringify(productIds),
@@ -89,9 +93,9 @@ export default function NewDiscountPage() {
   };
 
   return (
-    <s-page heading="New Discount">
+    <s-page heading={`Edit: ${entry.title || "Untitled"}`}>
       <s-section>
-        <s-button variant="tertiary" onClick={() => navigate("/app/discounts")}>
+        <s-button variant="tertiary" onClick={() => navigate("/app/discounts/tiered-discount")}>
           Back
         </s-button>
       </s-section>
@@ -108,16 +112,7 @@ export default function NewDiscountPage() {
                 onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
               ></s-text-field>
 
-              <s-select
-                label="Discount Scope"
-                value={scope}
-                onChange={(e) =>
-                  setScope((e.target as HTMLSelectElement).value as "order" | "product")
-                }
-              >
-                <s-option value="order">Order Discount - applies to the entire order</s-option>
-                <s-option value="product">Product Discount - applies to specific products</s-option>
-              </s-select>
+              <s-text color="base">Scope: Tiered Discount — applies to specific products</s-text>
 
               <s-select
                 label="Discount Type"
@@ -138,8 +133,9 @@ export default function NewDiscountPage() {
             </s-stack>
           </s-section>
         </s-box>
+
         <s-box paddingBlockEnd="small">
-        {/* Section 2: Discount Tiers & Product Selection */}
+        {/* Section 2: Discount Tiers */}
           <s-section>
             <s-stack direction="block" gap="base">
               <s-text color="base">Discount Tiers</s-text>
@@ -147,9 +143,9 @@ export default function NewDiscountPage() {
                 <s-grid key={index} gridTemplateColumns="repeat(13, 1fr)" gap="base">
                     <s-grid-item gridColumn="span 4" gridRow="span 1">
                       <s-text-field
-                        label={scope === "order" ? "Min Amount ($)" : "Min Qty"}
+                        label="Min Qty"
                         value={String(tier.minQuantity)}
-                        placeholder={scope === "order" ? "50" : "2"}
+                        placeholder="2"
                         onInput={(e) =>
                           updateTier(index, "minQuantity", (e.target as HTMLInputElement).value)
                         }
@@ -167,7 +163,7 @@ export default function NewDiscountPage() {
                     </s-grid-item>
                     <s-grid-item gridColumn="span 4" gridRow="span 1">
                       <s-text-field
-                        label="Display Message"
+                        label="Display Name"
                         value={tier.message || ""}
                         placeholder="e.g. Buy 2 Save 10%"
                         onInput={(e) =>
@@ -193,46 +189,47 @@ export default function NewDiscountPage() {
             </s-stack>
           </s-section>
         </s-box>
+
         <s-box paddingBlockEnd="small">
-          {/* Section 3: Product Selection (optional) & Additional Settings */}
+          {/* Section 3: Product Selection */}
           <s-section>
             <s-stack direction="block" gap="base">
-              <s-text color="base">Eligible Products (If none selected, applies to all products)</s-text>
+              <s-text color="base">Eligible Products (optional)</s-text>
 
               <s-button variant="primary" onClick={() => setPickerOpen(true)}>
                 {productIds.length > 0
                   ? `Add / Remove Products (${productIds.length} selected)`
                   : "Add Products"}
               </s-button>
+
               {productIds.length > 0 && (
                 <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "12px" }}>
-                  {productIds.map((id) => {
-                    return (
-                      <li
-                        key={id}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          border: "1px solid #dfe3eb",
-                          borderRadius: "12px",
-                          padding: "12px 16px",
-                          background: "#fafbff",
-                          marginTop: "12px",
-                        }}
+                  {productIds.map((id) => (
+                    <li
+                      key={id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        border: "1px solid #dfe3eb",
+                        borderRadius: "12px",
+                        padding: "12px 16px",
+                        background: "#fafbff",
+                        marginTop: "12px",
+                      }}
+                    >
+                      <span>{productNames[id] || id}</span>
+                      <s-button
+                        variant="tertiary"
+                        onClick={() => setProductIds(productIds.filter((x) => x !== id))}
                       >
-                        <span>{productNames[id] || id}</span>
-                        <s-button
-                          variant="tertiary"
-                          onClick={() => setProductIds(productIds.filter((x) => x !== id))}
-                        >
-                          Remove
-                        </s-button>
-                      </li>
-                    );
-                  })}
+                        Remove
+                      </s-button>
+                    </li>
+                  ))}
                 </ul>
               )}
+
               <ProductPickerDialog
                 open={pickerOpen}
                 selectedIds={productIds}
@@ -242,17 +239,35 @@ export default function NewDiscountPage() {
             </s-stack>
           </s-section>
         </s-box>
+
         <s-box paddingBlockEnd="small">
-          {/* Section 4: Activation */}
+          {/* Section 4: Linked status & Save */}
+          <s-section>
             <s-stack direction="block" gap="base">
+              {entry.shopifyDiscountId && (
+                <s-banner tone="success">
+                  <s-paragraph>
+                    Linked to Shopify Admin - changes will update the existing automatic discount.
+                  </s-paragraph>
+                </s-banner>
+              )}
+              {!entry.shopifyDiscountId && (
+                <s-banner tone="info">
+                  <s-paragraph>
+                    No Shopify discount linked yet. Saving will create one automatically.
+                  </s-paragraph>
+                </s-banner>
+              )}
+
               <s-button
                 type="submit"
                 variant="primary"
                 {...(isSaving ? { loading: true } : {})}
               >
-                Create Discount
+                Save Changes
               </s-button>
             </s-stack>
+          </s-section>
         </s-box>
       </form>
     </s-page>

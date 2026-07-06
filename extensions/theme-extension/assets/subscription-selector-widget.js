@@ -74,13 +74,14 @@ class SubscriptionSelectorWidget extends HTMLElement {
     });
   }
   updateTitle(percent, isSelected) {
-    const title = this.querySelector('.yx-sub-card__title-text')
+    // 标题用户自定义，暂时不需要更新
+    /* const title = this.querySelector('.yx-sub-card__title-text')
     if (isSelected) return title.textContent = 'SUBSCRIBE & SAVE';
     if (percent > 0) {
       title.textContent = 'SUBSCRIBE & SAVE';
     } else {
       title.textContent = 'SUBSCRIBE';
-    }
+    } */
   }
   updateSaveRate(discountRate, isSelected = false) {
     const value = parseFloat(discountRate || 0);
@@ -99,29 +100,44 @@ class SubscriptionSelectorWidget extends HTMLElement {
   }
 
   handleDeliveryButtonClick(event) {
-    event.stopPropagation();
-    const btn = event.currentTarget;
+    // Prevent the <label>'s default behavior from forwarding the click to the
+    // checkbox — we manage the checked state in JS so it doesn't get toggled
+    // back by the native activation.
+    event.preventDefault();
 
-    const isSelected = btn.classList.contains('selected');
+    const btn = event.currentTarget;
+    const checkInput = btn.querySelector('input[type="checkbox"]');
+
     const planId = btn.dataset.planId;
     const groupId = btn.dataset.planGroupId;
     const discountRate = btn.dataset.discountRate;
     const planName = btn.dataset.planName;
 
-    if (isSelected) {
-      this.deliveryBtns.forEach((b) => b.classList.remove('selected'));
+    // Toggle off if already selected
+    if (btn.classList.contains('selected')) {
+      if (checkInput) checkInput.checked = false;
+      btn.classList.remove('selected');
+
+      // Reset card selection
       this.cards.forEach((card) => card.classList.remove('selected'));
-      this.purchaseRadios.forEach((radio) => {
-        radio.checked = false;
-      });
-      this.planHiddens.forEach((hidden) => {
-        if (hidden.dataset.planGroupId === groupId) hidden.value = '';
-      });
-      this.updateSaveRate(0, isSelected);
-      // 清除选中状态
-      this.subscriptionChangeEvent({planId: '', groupId, discountRate: 0});
+
+      // Reset purchase-type radio & hidden plan input
+      this.purchaseRadios.forEach((radio) => { radio.checked = false; });
+      this.planHiddens.forEach((hidden) => { hidden.value = ''; });
+
+      this.updateSaveRate('0');
+      this.subscriptionChangeEvent({planId: '', groupId: '', discountRate: '0'});
       return;
     }
+
+    // Select this button, unselect all others (single-select)
+    this.deliveryBtns.forEach((b) => {
+      b.classList.remove('selected');
+      const cb = b.querySelector('input[type="checkbox"]');
+      if (cb) cb.checked = false;
+    });
+    btn.classList.add('selected');
+    if (checkInput) checkInput.checked = true;
 
     this.updateCardSelection('subscription', {
       planId,
@@ -131,8 +147,6 @@ class SubscriptionSelectorWidget extends HTMLElement {
     });
     this.updateSaveRate(discountRate);
 
-    this.deliveryBtns.forEach((b) => b.classList.remove('selected'));
-    btn.classList.add('selected');
     this.subscriptionChangeEvent({planId, groupId, discountRate});
   }
 

@@ -4,22 +4,18 @@ import {
   readConfig,
   writeConfig,
   findFunctionNode,
+  updateShopifyDiscount,
   createShopifyDiscount,
   type DiscountEntry,
 } from "@/lib/discount-helpers.server";
 
-function generateId(): string {
-  return `d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
-
   const formData = await request.formData();
 
+  const entryId = formData.get("entryId") as string;
   const title = formData.get("title") as string;
   const type = formData.get("type") as "percentage" | "fixed_amount";
-  const scope = (formData.get("scope") as "order" | "product") || "order";
   const active = formData.get("active") === "true";
 
   // Parse tiers from form data
@@ -38,42 +34,54 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     try { productIds = JSON.parse(productIdsRaw as string); } catch {}
   }
 
-  const newEntry: DiscountEntry = {
-    id: generateId(),
+  // Read current config
+  const { config, ownerId } = await readConfig(admin);
+
+  // Find and update the entry
+  const idx = config.discounts.findIndex((d) => d.id === entryId);
+  if (idx === -1) {
+    return { ok: false, errors: ["Discount not found"] };
+  }
+
+  const updated: DiscountEntry = {
+    ...config.discounts[idx],
     title,
     type,
-    scope,
+    scope: "product",
     value: firstTier?.value || "10",
     minQuantity: firstTier?.minQuantity || 0,
     active,
     tiers: discountTiers.length > 0 ? discountTiers : undefined,
-    ...(productIds.length > 0 ? { productIds } : {}),
+    ...(productIds.length > 0 ? { productIds } : { productIds: undefined }),
   };
 
-  // Find the function node first
+  // Find the function node
   const funcNode = await findFunctionNode();
   if (!funcNode) {
     return { ok: false, errors: ["Discount function not found - deploy the app first"] };
   }
+  const funcId = funcNode.id;
 
-  // Read current config
-  const { config, ownerId } = await readConfig(admin);
-  // Create Shopify discount - combined function handles all scopes
-  const result = await createShopifyDiscount(admin, funcNode.id, newEntry);
-  if (result.discountId) {
-    newEntry.shopifyDiscountId = result.discountId;
-  } else if (result.error) {
-    return { ok: false, errors: [result.error] };
+  if (updated.shopifyDiscountId) {
+    const updateErr = await updateShopifyDiscount(admin, updated, funcId);
+    if (updateErr) {
+      return { ok: false, errors: [`Failed to update Shopify discount: ${updateErr}`] };
+    }
+  } else if (updated.active) {
+    const result = await createShopifyDiscount(admin, funcId, updated);
+    if (result.discountId) {
+      updated.shopifyDiscountId = result.discountId;
+    } else if (result.error) {
+      return { ok: false, errors: [`Failed to create Shopify discount: ${result.error}`] };
+    }
   }
 
-  // Append to list
-  config.discounts.push(newEntry);
+  config.discounts[idx] = updated;
 
-  // Write back
   const err = await writeConfig(admin, config, ownerId);
   if (err) {
     return { ok: false, errors: [err] };
   }
 
-  return { ok: true, type: "created", id: newEntry.id };
+  return { ok: true, type: "updated" };
 };
