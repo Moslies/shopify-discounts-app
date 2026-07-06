@@ -3,7 +3,6 @@
 
 {%- assign card_color = block.settings.card_color | default: '#ffffff' -%}
 {%- assign selected_color = block.settings.selected_color | default: '#fff' -%}
-{%- assign popular_indexs = block.settings.popular_indexs | default: 2 -%}
 {%- assign card_padding = block.settings.card_padding | default: 16 -%}
 {%- assign show_card_shadow = block.settings.show_card_shadow | default: false -%}
 
@@ -15,7 +14,7 @@
   "
 >
     <bundle-selector-widget>
-      {% render 'bundle-selector', popular_indexs: popular_indexs, show_card_shadow: show_card_shadow%}
+      {% render 'bundle-selector', title: block.settings.title, show_card_shadow: show_card_shadow%}
     </bundle-selector-widget>
 </theme-container>
 
@@ -25,10 +24,10 @@
   "target": "section",
   "settings": [
     {
-      "type": "number",
-      "id": "popular_indexs",
-      "label": "热门套餐索引",
-      "default": 2
+      "type": "text",
+      "id": "title",
+      "label": "title",
+      "default": "BUNDLE &amp; SAVE"
     },
     {
       "type": "color",

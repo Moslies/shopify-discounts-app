@@ -16,7 +16,7 @@
   "
 >
   <subscription-selector-widget>
-    {% render 'subscription-selector', show_card_shadow: show_card_shadow %}
+    {% render 'subscription-selector', title: block.settings.title, show_card_shadow: show_card_shadow %}
   </subscription-selector-widget>
 </theme-container>
 {% style %}
@@ -31,6 +31,12 @@
   "name": "subscription",
   "target": "section",
   "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "title",
+      "default": "SUBSCRIBE &amp; SAVE"
+    },
     {
       "type": "range",
       "id": "card_padding",

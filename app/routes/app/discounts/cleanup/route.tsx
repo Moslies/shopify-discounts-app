@@ -77,7 +77,7 @@ export default function CleanupPage() {
 
   return (
     <s-page heading="Clean Up Orphan Discounts">
-      <s-button slot="primary-action" variant="tertiary" onClick={() => navigate("/app/discounts")}>
+      <s-button slot="primary-action" variant="tertiary" onClick={() => navigate("/app/discounts/order-discount")}>
         Back to Discounts
       </s-button>
 

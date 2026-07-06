@@ -18,7 +18,7 @@ export default function Index() {
       <s-section heading="快速开始">
         <s-unordered-list>
           <s-list-item>
-            <s-link href="/app/discounts">查看折扣规则</s-link>
+            <s-link href="/app/discounts/order-discount">查看折扣规则</s-link>
           </s-list-item>
           <s-list-item>
             <s-link

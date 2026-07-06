@@ -11,6 +11,11 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
     throw new Response("Discount not found", { status: 404 });
   }
 
+  // Ensure this entry is a product-scoped discount
+  if (entry.scope !== "product") {
+    throw new Response("Discount not found", { status: 404 });
+  }
+
   // Fetch product names for pre-selected products
   const productMap: Record<string, string> = {};
   if (entry.productIds?.length) {

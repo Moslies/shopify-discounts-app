@@ -65,21 +65,23 @@
   data-variant-id="{{ product.selected_or_first_available_variant.id }}"
   data-currency-code="{{ shop.currency }}"
   data-specification="{{ product.options | join: ' / ' | escape }}"
-  data-popular_indexs="{{ popular_indexs | escape}}"
   data-variant-flag="{{ variant_flag | escape }}"
   style="{% if show_card_shadow %}box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);{% endif %}"
 >
+{% if title != blank %}
   <div class="bundle-title">
     <span></span>
     <span>
-      {% if tiers_json != '[]' and tiers_json != blank and tiers_json != null %}
+      {% comment %} {% if tiers_json != '[]' and tiers_json != blank and tiers_json != null %}
         BUNDLE & SAVE
       {% else %}
         PURCHASE
-      {% endif %}
+      {% endif %} {% endcomment %}
+      {{ title }}
     </span>
     <span></span>
   </div>
+{% endif %}
   {%- comment -%} 默认变体选择器（隐藏，供JS读取） {%- endcomment -%}
   <select class="bundle-single-select" style="display:none;" aria-hidden="true">
     {% for variant in product.variants %}
@@ -159,16 +161,11 @@
 
 .bundle-option:has(input:checked) {
   border-color: var(--selected_variant_border_color, #3b82f6);
-  background: rgb(var(--selected_variant_background_color, rgba(59,130,246,0.08)) / 0.5);
+  background: var(--selected_variant_background_color, rgba(59,130,246,0.08));
   color: var(--selected_variant_text_color, #111827);
   box-shadow: 0 12px 28px rgba(59,130,246,0.14);
 }
 
-.bundle-option:has(input:checked):hover {
-  border-color: var(--selected_variant_border_color, #2563eb);
-  background: rgb(var(--selected_variant_background_color, rgba(59,130,246,0.08)) / 0.5);
-  color: var(--selected_variant_text_color, #111827);
-}
 
 .bundle-left {
   flex: 1;
@@ -186,42 +183,70 @@
   font-size: 16px;
 }
 .bundle-subscribe-item {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
-  padding-left: 28px;
+  padding-left: 22px;
+  padding-top: 10px;
+}
+.bundle-subscribe-item:before {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 6px;
+  position: absolute;
+  left: 18px;
+  top: 16px;
+  background: #ededed;
+  z-index: 10;
+}
+.bundle-option:has(input:checked) .bundle-subscribe-item:before {
+  background: var(--selected_variant_background_color, rgba(59,130,246,0.08));
+}
+.bundle-option:hover .bundle-subscribe-item:before {
+  background: var(--selected_variant_hover_background_color, rgba(59,130,246,0.08));
 }
 .bundle-subscribe-item div {
-  display:inline-flex;
-  align-items:center;
-  height:24px;
-  line-height:24px;
-  padding:0 10px;
-  border-radius:999px;
-  font-size:12px;
-  font-weight:600;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
   color: #9CA3AF;
-  background: #FFFFFF;
-  margin-right: 8px;
-  margin-top: 8px;
+  padding: 0px 6px;
+  /* background: var(--selected_variant_border_color, #387cc9);
+  color: var(--badge_text_color, #fff); */
 }
-.bundle-desc {
-  /* border:1px solid #BFDBFE; */
+
+.bundle-subscribe-item div:before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #9CA3AF;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: -2px;
 }
+
 .subscribe-item-content {
   display: none;
-  /* border: 1px solid #D8B4FE; */
-  /* color: #7C3AED; */
-  
 }
-.bundle-option:has(input:checked) .subscribe-item-content {
-  color: #FFA500;
-}
-.bundle-option:has(input:checked) .bundle-desc {
-  color: #2563EB;
-}
+
 .bundle-option:has(input:checked) .product-discount {
   color: #7C3AED;
 }
+
+.bundle-option:has(input:checked) .bundle-desc {
+  color: #FFA500;
+}
+
+.bundle-option:has(input:checked) .subscribe-item-content {
+  color: var(--selected_variant_border_color, #387cc9);
+}
+
 .bundle-name:first-child span {
   display: inline-block;
   min-width: 60px;
@@ -324,7 +349,7 @@
   left: 10px;
   display: block;
 }
-
+/* // todo: 热门套餐索引显示 */
 .popular-badge {
   position: absolute;
   top: -12px;
@@ -338,9 +363,11 @@
 }
 
 .variant-specification {
-    font-size: 12px;
-    margin-bottom: 4px;
-    color: #777;
+  position: relative;
+  z-index: 11;
+  font-size: 12px;
+  margin-bottom: 4px;
+  color: #777;
 }
 
 .bundle-option-index {

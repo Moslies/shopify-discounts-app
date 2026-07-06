@@ -16,7 +16,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const entryId = formData.get("entryId") as string;
   const title = formData.get("title") as string;
   const type = formData.get("type") as "percentage" | "fixed_amount";
-  const scope = (formData.get("scope") as "order" | "product") || "order";
   const active = formData.get("active") === "true";
 
   // Parse tiers from form data
@@ -27,13 +26,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   const firstTier = discountTiers.length > 0 ? discountTiers[0] : null;
-
-  // Parse productIds from form data
-  let productIds: string[] = [];
-  const productIdsRaw = formData.get("productIds");
-  if (productIdsRaw) {
-    try { productIds = JSON.parse(productIdsRaw as string); } catch {}
-  }
 
   // Read current config
   const { config, ownerId } = await readConfig(admin);
@@ -48,12 +40,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     ...config.discounts[idx],
     title,
     type,
-    scope,
+    scope: "order",
     value: firstTier?.value || "10",
     minQuantity: firstTier?.minQuantity || 0,
     active,
     tiers: discountTiers.length > 0 ? discountTiers : undefined,
-    ...(productIds.length > 0 ? { productIds } : { productIds: undefined }),
+    productIds: undefined,
   };
 
   // Find the function node
