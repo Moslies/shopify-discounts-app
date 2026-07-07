@@ -30,19 +30,19 @@ const YX_OPTION_RADIO_STYLE = `
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        accent-color: var(--selected_variant_border_color, #2563eb);
+        accent-color: var(--selected_variant_border_color, ##387cc9);
     }
     .yx-option__radio:checked {
-        border-color: var(--selected_variant_border_color, #2563eb) !important;
-        accent-color: var(--selected_variant_border_color, #2563eb) !important;
+        border-color: var(--selected_variant_border_color, ##387cc9) !important;
+        accent-color: var(--selected_variant_border_color, ##387cc9) !important;
     }
     .yx-option__radio:checked::after,
     .yx-option__radio:checked::before {
-        background-color: var(--selected_variant_border_color, #2563eb) !important;
-        border-color: var(--selected_variant_border_color, #2563eb) !important;
+        background-color: var(--selected_variant_border_color, ##387cc9) !important;
+        border-color: var(--selected_variant_border_color, ##387cc9) !important;
     }
     .yx-option__radio:not(:disabled):hover:checked {
-        border-color: var(--selected_variant_border_color, #2563eb) !important;
+        border-color: var(--selected_variant_border_color, ##387cc9) !important;
         background-color: rgba(59,130,246,0.18) !important;
     }
 `;
