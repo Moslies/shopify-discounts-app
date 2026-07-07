@@ -12,25 +12,28 @@ export const loader = async ({ params, request }: LoaderFunctionArgs) => {
   }
 
   // Ensure this entry is a product-scoped discount
-  if (entry.scope !== "product") {
+  if (entry.scope !== "tiered") {
     throw new Response("Discount not found", { status: 404 });
   }
 
-  // Fetch product names for pre-selected products
-  const productMap: Record<string, string> = {};
+  // Fetch product names and images for pre-selected products
+  const productMap: Record<string, { title: string; imageUrl?: string }> = {};
   if (entry.productIds?.length) {
     const resp = await admin.graphql(
       `#graphql
       query getProducts($ids: [ID!]!) {
         nodes(ids: $ids) {
-          ... on Product { id title }
+          ... on Product { id title featuredImage { url altText } }
         }
       }`,
       { variables: { ids: entry.productIds } }
     );
     const json = await resp.json();
     for (const node of json.data?.nodes || []) {
-      if (node) productMap[node.id] = node.title;
+      if (node) productMap[node.id] = {
+        title: node.title,
+        imageUrl: node.featuredImage?.url || undefined,
+      };
     }
   }
 

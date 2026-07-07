@@ -73,7 +73,7 @@ export default function ConfirmDialog({
         alignItems: "center",
         justifyContent: "center",
       }}
-      onKeyDown={handleKeyDown}
+      // onKeyDown={handleKeyDown}
     >
       {/* Backdrop button satisfies the a11y interactive-element rule. */}
       <button

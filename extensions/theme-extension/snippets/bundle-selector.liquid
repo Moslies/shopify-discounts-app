@@ -8,7 +8,7 @@
   {% assign all_tiers_items = '' %}
 
   {% for discount in config.discounts %}
-    {% if discount.active and discount.scope contains 'product' %}
+    {% if discount.active and discount.scope contains 'tiered' %}
 
       {% comment %} Check if this discount applies to the current product {% endcomment %}
       {% assign matches_current = false %}
@@ -57,6 +57,7 @@
   {% assign variant_flag = 66 %}
 {% endif %}
 
+
 <div 
   class="bundle-selector" 
   data-tiers="{{ tiers_json | escape }}"
@@ -66,40 +67,42 @@
   data-currency-code="{{ shop.currency }}"
   data-specification="{{ product.options | join: ' / ' | escape }}"
   data-variant-flag="{{ variant_flag | escape }}"
-  style="{% if show_card_shadow %}box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);{% endif %}"
 >
-{% if title != blank %}
-  <div class="bundle-title">
-    <span></span>
-    <span>
-      {% comment %} {% if tiers_json != '[]' and tiers_json != blank and tiers_json != null %}
-        BUNDLE & SAVE
-      {% else %}
-        PURCHASE
-      {% endif %} {% endcomment %}
-      {{ title }}
-    </span>
-    <span></span>
-  </div>
-{% endif %}
-  {%- comment -%} 默认变体选择器（隐藏，供JS读取） {%- endcomment -%}
-  <select class="bundle-single-select" style="display:none;" aria-hidden="true">
-    {% for variant in product.variants %}
-      <option value="{{ variant.id }}"
-              data-price="{{ variant.price }}"
-              data-compare_at_price="{{ variant.compare_at_price }}"
-              data-available="{{ variant.available }}"{% unless variant.available %} disabled{% endunless %}>
-        {{ variant.title }}{% unless variant.available %} - Sold out{% endunless %}
-      </option>
-    {% endfor %}
-  </select>
-
-  {%- comment -%} 阶梯选项（从 metafield 动态渲染）{%- endcomment -%}
-  <div id="bundle-tier-options"></div>
+  {% if tiers_json != '[]' and tiers_json != blank and tiers_json != null %}
+    <div style="{% if show_card_shadow %}box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);{% endif %}">
+      {% if title != blank %}
+        <div class="bundle-title">
+          <span></span>
+          <span>
+            {% comment %} {% if tiers_json != '[]' and tiers_json != blank and tiers_json != null %}
+              BUNDLE & SAVE
+            {% else %}
+              PURCHASE
+            {% endif %} {% endcomment %}
+            {{ title }}
+          </span>
+          <span></span>
+        </div>
+      {% endif %}
+      {%- comment -%} 默认变体选择器（隐藏，供JS读取） {%- endcomment -%}
+      <select class="bundle-single-select" style="display:none;" aria-hidden="true">
+        {% for variant in product.variants %}
+          <option value="{{ variant.id }}"
+                  data-price="{{ variant.price }}"
+                  data-compare_at_price="{{ variant.compare_at_price }}"
+                  data-available="{{ variant.available }}"{% unless variant.available %} disabled{% endunless %}>
+            {{ variant.title }}{% unless variant.available %} - Sold out{% endunless %}
+          </option>
+        {% endfor %}
+      </select>
+      {%- comment -%} 阶梯选项（从 metafield 动态渲染）{%- endcomment -%}
+      <div id="bundle-tier-options"></div>
+    </div>
+  {% endif %}
 </div>
 
 {% style %}
-.bundle-selector {
+.bundle-selector >div {
   border-radius: 8px;
   padding: var(--card-padding);
   margin: auto;
@@ -137,7 +140,7 @@
   border: 1px solid #e0e0e0;
   border-radius: 16px;
   padding: 16px;
-  margin-bottom: 16px;
+  margin-top: 16px;
   cursor: pointer;
   position: relative;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;

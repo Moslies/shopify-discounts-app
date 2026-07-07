@@ -357,17 +357,6 @@ class BundleSelectorWidget extends HTMLElement {
       select.addEventListener('change', () => {
         this.updateTierPrice(label);
         this.updateAvailability(select);
-        // 如果这是数量为1的阶梯，同步到隐藏的master select
-        if (label.dataset.qty === '1') {
-          this.variantSelect.value = select.value;
-          // 触发主选择器的 change 事件，确保所有依赖更新
-          try {
-            this.variantSelect.dispatchEvent(new Event('change', { bubbles: true }));
-          } catch (e) {
-            // 某些环境可能不支持 Event 构造器，作为回退直接调用更新函数
-            this.updateSinglePrice();
-          }
-        }
       });
     });
   }
@@ -378,14 +367,14 @@ class BundleSelectorWidget extends HTMLElement {
     let hasQty1Tier = this.tiers.some((tier) => tier.minQuantity === 1);
 
     if (!hasQty1Tier) {
-      this.tiers.unshift({ minQuantity: 1, value: "0", message: "", type: "percentage" });
+      // this.tiers.unshift({ minQuantity: 1, value: "0", message: "", type: "percentage" });
       hasQty1Tier = true;
     }
 
     const basePrice = this.getBundleBasePrice();
     const mergedTiers = this.mergeTiers(this.tiers, basePrice);
 
-    mergedTiers.forEach((tier, index) => {
+    mergedTiers.forEach((tier) => {
       const qty = tier.minQuantity;
       const discountValue = parseFloat(tier.value);
       const discountType = tier.type || 'percentage';
@@ -411,9 +400,9 @@ class BundleSelectorWidget extends HTMLElement {
         }
         savedAmount = originalCrossed - discountedTotal;
       }
-
-      // todo: 热门套餐索引显示
-      const isPopular = true
+      
+      const badgeText = tier.badgeText || ``;
+      const comboName = tier.comboName || `${qty} Pack`;
 
       const label = document.createElement('label');
       label.className = 'bundle-option';
@@ -427,7 +416,7 @@ class BundleSelectorWidget extends HTMLElement {
                 <div class="bundle-radio-item">
                   <input class="yx-option__radio" style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="${qty}">
                   <div class="bundle-name">
-                    <span>${qty} Pack</span>
+                    <span>${comboName}</span>
                     <div class="bundle-save-badge" style="${savedAmount > 0 ? '' : 'display:none'}">
                       <span>You Save</span>
                       <strong></strong>
@@ -454,7 +443,7 @@ class BundleSelectorWidget extends HTMLElement {
             <div class="variant-specification">${this.specification}</div>
             ${this.buildVariantSelects(qty)}
           </div>
-          ${isPopular ? '<div class="popular-badge">Most Popular</div>' : ''}`;
+          ${badgeText ? `<div class="popular-badge">${badgeText}</div>` : ''}`;
 
       this.tierContainer.appendChild(label);
       this.attachTierSelectListeners(label);
@@ -551,6 +540,7 @@ class BundleSelectorWidget extends HTMLElement {
  * @returns {Array} 返回包含变体信息的数组，每个元素是一个对象，包含id、quantity和properties属性
  */
   getBundleSelectedVariants() {
+    if (this.tiers.length === 0) return [];
   // 获取选中的单选按钮元素
     const selectedRadio = this.container.querySelector('input[name="bundle-qty"]:checked');
   // 将选中的值转换为整数，默认值为1

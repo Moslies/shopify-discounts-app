@@ -26,7 +26,7 @@ export default function NewSubscriptionPage() {
   const [options] = useState("Delivery every, Discount % off");
   const [plans, setPlans] = useState([{ interval: "WEEK", intervalCount: "1", discount: "0" }]);
   const [productIds, setProductIds] = useState<string[]>([]);
-  const [productNames, setProductNames] = useState<Record<string, string>>({});
+  const [productNames, setProductNames] = useState<Record<string, { title: string; imageUrl?: string }>>({});
   const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
@@ -50,9 +50,9 @@ export default function NewSubscriptionPage() {
     setPlans((current) => current.map((plan, itemIndex) => (itemIndex === index ? { ...plan, [field]: value } : plan)));
   };
 
-  const handlePickerConfirm = (ids: string[], names: Record<string, string>) => {
+  const handlePickerConfirm = (ids: string[], selectedProducts: Record<string, { title: string; imageUrl?: string }>) => {
     setProductIds(ids);
-    setProductNames((prev) => ({ ...prev, ...names }));
+    setProductNames(selectedProducts);
     setPickerOpen(false);
   };
 
@@ -168,7 +168,23 @@ export default function NewSubscriptionPage() {
                         background: "#fafbff",
                       }}
                     >
-                      <span>{productNames[id] || id}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        {productNames[id]?.imageUrl && (
+                          <img
+                            src={productNames[id].imageUrl}
+                            alt={productNames[id]?.title || "product"}
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              borderRadius: "4px",
+                              objectFit: "cover",
+                              flexShrink: 0,
+                              background: "#f6f6f7",
+                            }}
+                          />
+                        )}
+                        <span>{productNames[id]?.title || id}</span>
+                      </div>
                       <s-button
                         variant="tertiary"
                         onClick={() => setProductIds(productIds.filter((x) => x !== id))}
