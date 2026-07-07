@@ -443,7 +443,7 @@ class BundleSelectorWidget extends HTMLElement {
             <div class="variant-specification">${this.specification}</div>
             ${this.buildVariantSelects(qty)}
           </div>
-          ${badgeText ? `<div class="popular-badge">${badgeText}</div>` : ''}`;
+          ${badgeText ? `<div class="style-3">${badgeText}</div>` : ''}`;
 
       this.tierContainer.appendChild(label);
       this.attachTierSelectListeners(label);

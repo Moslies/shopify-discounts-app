@@ -60,7 +60,7 @@
     {
       "type": "select",
       "id": "breaks_badge_style",
-      "label": "Badges style",
+      "label": "All Badges style",
       "options": [
         {
           "value": "1",
@@ -75,8 +75,16 @@
           "label": "Style 3"
         }
       ],
-      "default": "1"
+      "default": "1",
+      "info": "If the next setting is configured, this setting will be overridden"
     },
+    {
+      "type": "text",
+      "id": "breaks_badges",
+      "label": "Badges style per product",
+      "default": "[empty], [empty]",
+      "info": "Set badge style for each product individually, separated by commas. eg: Style 1, [empty], Style 2"
+    }
   ]
 }
 {% endschema %}

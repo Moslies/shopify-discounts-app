@@ -1,0 +1,120 @@
+{% style %}
+.default-badge {
+  position: absolute;
+  top: -12px;
+  right: 12px;
+  background: var(--selected_variant_border_color, var(--selected-color));
+  color: var(--badge_text_color, #111827);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: bold;
+}
+.style-1 {
+  position: absolute;
+  top: -6px;
+  right: -20px;
+  padding: 2px 12px;
+  font-size: 12px;
+  background: linear-gradient(
+    135deg,
+    #ec4899,
+    #f97316
+  );
+  color: white;
+  font-weight: 700;
+  transform: rotate(5deg);
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.15);
+}
+.style-1::before{
+  content: "🔥";
+  position: absolute;
+  left: -16px;
+  top: -10px;
+  font-size: 26px;
+}
+
+.style-2 {
+  position:absolute;
+  top: -10px;
+  right: -6px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #2563EB;
+  color: white;
+  padding: 2px 12px;
+  padding-right: 14px;
+  transform: skew(-18deg) rotate(-5deg);
+}
+.style-2::after{
+  content: "⚡";
+  position: absolute;
+  right: -18px;
+  top: -10px;
+  font-size: 26px;
+}
+.style-3 {
+  position: absolute;
+  top: -10px;
+  right: -16px;
+
+  padding: 2px 12px;
+  padding-left: 30px;
+
+  display: flex;
+  align-items: center;
+
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+
+  background: linear-gradient(
+    135deg,
+    #16c784,
+    #0aa86b
+  );
+
+  border-radius: 6px;
+
+  transform: rotate(5deg);
+
+  box-shadow:
+    0 6px 14px rgba(0,0,0,.18);
+
+  z-index: 10;
+}
+/* icon */
+.style-3::before {
+
+  content: "★";
+
+  position: absolute;
+
+  left: -12px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  width: 30px;
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #10b981;
+
+  color: #fff;
+
+  font-size: 20px;
+
+  border: 2px solid #fff;
+
+  box-shadow:
+    0 3px 8px rgba(0,0,0,.18);
+}
+
+{% endstyle %}

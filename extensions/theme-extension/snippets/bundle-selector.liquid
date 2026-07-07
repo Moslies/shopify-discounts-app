@@ -352,18 +352,6 @@
   left: 10px;
   display: block;
 }
-/* // todo: 热门套餐索引显示 */
-.popular-badge {
-  position: absolute;
-  top: -12px;
-  right: 12px;
-  background: var(--selected_variant_border_color, var(--selected-color));
-  color: var(--badge_text_color, #111827);
-  border-radius: 20px;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: bold;
-}
 
 .variant-specification {
   position: relative;
@@ -414,3 +402,4 @@ option:disabled {
 }
 
 {% endstyle %}
+{% render 'badge-style' %}
