@@ -705,7 +705,7 @@ class BundleSelectorWidget extends HTMLElement {
     // 折扣标签更新
     const badgeNowraps = document.querySelectorAll('.price__badge-sale .nowrap');
     badgeNowraps.forEach((el) => {
-      el.innerHTML = `SAVE ${detail.totalDiscount} OFF`;
+      el.innerHTML = `SAVE ${detail.totalDiscount}`;
     });
 
     // 派发事件，供外部监听更新商品详情价格
