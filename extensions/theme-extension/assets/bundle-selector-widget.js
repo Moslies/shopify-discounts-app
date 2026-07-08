@@ -678,14 +678,28 @@ class BundleSelectorWidget extends HTMLElement {
     const totalDiscount = op - bp;
     const detail = { bundlePrice, originalPrice, totalDiscountPercent, totalDiscount: this.formatMoney(totalDiscount * 100) };
 
-    const salePriceEl = document.querySelector('.price-item--regular');
-    salePriceEl.textContent = this.formatMoney(this.compareAtPrice);
-
-    const productPriceEl = document.querySelector('.price-item--last');
-    productPriceEl.textContent = bundlePrice;
-
-    const badgeEl = document.querySelector('.price__badge-sale .nowrap');
-    badgeEl.textContent = `SAVE ${totalDiscountPercent}% OFF`;
+    // 售价更新
+    const mainPriceEls = Array.from(
+      document.querySelectorAll('.price__sale .main-price, .price__regular .main-price')
+    );
+    const salePriceItemEls = Array.from(
+      document.querySelectorAll('.price__sale .price-item--sale')
+    );
+    const regularPriceItemEls = Array.from(
+      document.querySelectorAll('.price__regular .price-item--regular')
+    );
+    const priceElsToUpdate = Array.from(
+      new Set([...mainPriceEls, ...salePriceItemEls, ...regularPriceItemEls])
+    );
+    priceElsToUpdate.forEach((el) => {
+      el.textContent = bundlePrice;
+    })
+    
+    // 折扣标签更新
+    const badgeNowraps = document.querySelectorAll('.price__badge-sale .nowrap');
+    badgeNowraps.forEach((el) => {
+      el.innerHTML = `SAVE ${totalDiscountPercent}% OFF`;
+    });
 
     // 派发事件，供外部监听更新商品详情价格
     document.dispatchEvent(new CustomEvent('bundle:priceUpdate', {
