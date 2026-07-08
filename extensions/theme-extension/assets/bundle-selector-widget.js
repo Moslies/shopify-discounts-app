@@ -678,30 +678,27 @@ class BundleSelectorWidget extends HTMLElement {
     const totalDiscount = op - bp;
     const detail = { bundlePrice, originalPrice, totalDiscountPercent, totalDiscount: this.formatMoney(totalDiscount * 100) };
 
-
+    // 售价更新
     const mainPriceEls = Array.from(
       document.querySelectorAll('.price__sale .main-price, .price__regular .main-price')
     );
-    mainPriceEls.forEach((el) => {
-      el.textContent = bundlePrice
-    });
     const salePriceItemEls = Array.from(
       document.querySelectorAll('.price__sale .price-item--sale')
     );
-    salePriceItemEls.forEach((el) => {
-      el.textContent = originalPrice;
-    });
-
     const regularPriceItemEls = Array.from(
       document.querySelectorAll('.price__regular .price-item--regular')
     );
-    regularPriceItemEls.forEach((el) => {
-      el.textContent = this.formatMoney(this.compareAtPrice);
+    const priceElsToUpdate = Array.from(
+      new Set([...mainPriceEls, ...salePriceItemEls, ...regularPriceItemEls])
+    );
+    priceElsToUpdate.forEach((el) => {
+      el.textContent = bundlePrice;
     })
     
+    // 折扣标签更新
     const badgeNowraps = document.querySelectorAll('.price__badge-sale .nowrap');
     badgeNowraps.forEach((el) => {
-      el.textContent = `SAVE ${totalDiscountPercent}% OFF`;
+      el.innerHTML = `SAVE ${totalDiscountPercent}% OFF`;
     });
 
     // 派发事件，供外部监听更新商品详情价格
