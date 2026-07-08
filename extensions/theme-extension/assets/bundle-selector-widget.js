@@ -694,7 +694,14 @@ class BundleSelectorWidget extends HTMLElement {
     priceElsToUpdate.forEach((el) => {
       el.textContent = bundlePrice;
     })
-    
+    // 更新原价
+    const comparePriceItemEls = Array.from(
+      document.querySelectorAll('.price__compare-price .price-item')
+    );
+
+    comparePriceItemEls.forEach((el) => {
+      el.textContent = this.formatMoney(originalPrice);
+    });
     // 折扣标签更新
     const badgeNowraps = document.querySelectorAll('.price__badge-sale .nowrap');
     badgeNowraps.forEach((el) => {
