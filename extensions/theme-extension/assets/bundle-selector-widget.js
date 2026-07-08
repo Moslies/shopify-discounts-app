@@ -361,6 +361,23 @@ class BundleSelectorWidget extends HTMLElement {
     });
   }
 
+/**
+ * 转换徽章文本
+ * @param {string} text - 需要转换的徽章文本
+ * @returns {Array} 转换后的数组
+ */
+  transformBadge(text, styles) {
+  // 如果输入文本为空，则返回空数组
+    if (!text) return [];
+  // 此处似乎缺少条件判断语句，需要补充完整
+    return text.split(',').map((style) => {
+      if (styles.includes(style.trim())) {
+        return style.trim();
+      }
+      return '';
+    });
+  }
+
   renderTiers() {
     this.tierContainer.innerHTML = '';
 
@@ -374,7 +391,7 @@ class BundleSelectorWidget extends HTMLElement {
     const basePrice = this.getBundleBasePrice();
     const mergedTiers = this.mergeTiers(this.tiers, basePrice);
 
-    mergedTiers.forEach((tier) => {
+    mergedTiers.forEach((tier, index) => {
       const qty = tier.minQuantity;
       const discountValue = parseFloat(tier.value);
       const discountType = tier.type || 'percentage';
@@ -403,6 +420,15 @@ class BundleSelectorWidget extends HTMLElement {
       
       const badgeText = tier.badgeText || ``;
       const comboName = tier.comboName || `${qty} Pack`;
+
+      const badgeStyle = this.container.dataset.all_badge_style || 'Style-1';
+      
+      const badgeStyleList = this.transformBadge(this.container.dataset.badges_style_list, ['Style-1', 'Style-2', 'Style-3', 'Style-4'])
+
+      const badgePosition = this.container.dataset.all_badge_position
+      console.log(this.container.dataset.badges_position_list)
+      const badgePositionList = this.transformBadge(this.container.dataset.badges_position_list, ['upper-right-corner', 'right-tilt', 'left-tilt'])
+      console.log(badgePositionList)
 
       const label = document.createElement('label');
       label.className = 'bundle-option';
@@ -443,7 +469,7 @@ class BundleSelectorWidget extends HTMLElement {
             <div class="variant-specification">${this.specification}</div>
             ${this.buildVariantSelects(qty)}
           </div>
-          ${badgeText ? `<div class="style-3">${badgeText}</div>` : ''}`;
+          ${badgeText ? `<div class="${badgeStyleList[index] ? badgeStyleList[index] : badgeStyle} ${badgePositionList[index] ? badgePositionList[index] : badgePosition}">${badgeText}</div>` : ''}`;
 
       this.tierContainer.appendChild(label);
       this.attachTierSelectListeners(label);

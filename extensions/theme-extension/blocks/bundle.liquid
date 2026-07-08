@@ -5,6 +5,10 @@
 {%- assign selected_color = block.settings.selected_color | default: '#fff' -%}
 {%- assign card_padding = block.settings.card_padding | default: 16 -%}
 {%- assign show_card_shadow = block.settings.show_card_shadow | default: false -%}
+{%- assign all_badge_style = block.settings.all_badge_style | default: 'Style-1' -%}
+{%- assign badges_style_list = block.settings.badges_style_list | default: '[empty]' -%}
+{%- assign all_badge_position = block.settings.all_badge_position | default: 'upper-right-corner' -%}
+{%- assign badges_position_list = block.settings.badges_position_list | default: '[empty]' -%}
 
 <theme-container data-shop-url="{{ shop.url }}" 
   style="
@@ -14,7 +18,7 @@
   "
 >
     <bundle-selector-widget>
-      {% render 'bundle-selector', title: block.settings.title, show_card_shadow: show_card_shadow%}
+      {% render 'bundle-selector', title: block.settings.title, show_card_shadow: show_card_shadow, all_badge_style: all_badge_style, badges_style_list: badges_style_list, all_badge_position: all_badge_position, badges_position_list: badges_position_list, %}
     </bundle-selector-widget>
 </theme-container>
 
@@ -59,31 +63,63 @@
     },
     {
       "type": "select",
-      "id": "breaks_badge_style",
-      "label": "All Badges style",
+      "id": "all_badge_style",
+      "label": "All badges style",
       "options": [
         {
-          "value": "1",
-          "label": "Style 1"
+          "value": "Style-1",
+          "label": "Style-1"
         },
         {
-          "value": "2",
-          "label": "Style 2"
+          "value": "Style-2",
+          "label": "Style-2"
         },
         {
-          "value": "3",
-          "label": "Style 3"
-        }
+          "value": "Style-3",
+          "label": "Style-3"
+        },
+        {
+          "value": "Style-4",
+          "label": "Style-4"
+        },
       ],
-      "default": "1",
+      "default": "Style-1",
       "info": "If the next setting is configured, this setting will be overridden"
     },
     {
       "type": "text",
-      "id": "breaks_badges",
+      "id": "badges_style_list",
       "label": "Badges style per product",
-      "default": "[empty], [empty]",
-      "info": "Set badge style for each product individually, separated by commas. eg: Style 1, [empty], Style 2"
+      "default": "[empty],[empty]",
+      "info": "Set badge style for each product individually, separated by commas. eg: Style-1, [empty], Style-2"
+    },
+    {
+      "type": "select",
+      "id": "all_badge_position",
+      "label": "All badges position",
+      "options": [
+        {
+          "value": "upper-right-corner",
+          "label": "upper-right-corner"
+        },
+        {
+          "value": "right-tilt",
+          "label": "right-tilt"
+        },
+        {
+          "value": "left-tilt",
+          "label": "left-tilt"
+        }
+      ],
+      "default": "upper-right-corner",
+      "info": "If the next setting is configured, this setting will be overridden"
+    },
+    {
+      "type": "text",
+      "id": "badges_position_list",
+      "label": "Badges position per product",
+      "default": "[empty],[empty]",
+      "info": "Set badge position for each product individually, separated by commas. eg: upper-right-corner, [empty], right-tilt"
     }
   ]
 }

@@ -57,7 +57,6 @@
   {% assign variant_flag = 66 %}
 {% endif %}
 
-
 <div 
   class="bundle-selector" 
   data-tiers="{{ tiers_json | escape }}"
@@ -67,6 +66,10 @@
   data-currency-code="{{ shop.currency }}"
   data-specification="{{ product.options | join: ' / ' | escape }}"
   data-variant-flag="{{ variant_flag | escape }}"
+  data-all_badge_style="{{ all_badge_style | escape }}"
+  data-badges_style_list="{{ badges_style_list | escape }}"
+  data-all_badge_position="{{ all_badge_position | escape }}"
+  data-badges_position_list="{{ badges_position_list| replace: '，', ',' | escape }}"
 >
   {% if tiers_json != '[]' and tiers_json != blank and tiers_json != null %}
     <div style="{% if show_card_shadow %}box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);{% endif %}">
