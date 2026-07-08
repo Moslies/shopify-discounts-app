@@ -43,6 +43,7 @@ class BundleSelectorWidget extends HTMLElement {
     this.updateAllAvailability();
     this.handleCurrencyChange();
     this.toggleSubscribeItems();
+    this.updatePriceToProductDetail();
     document.addEventListener('subscription:change', this.boundSubscriptionChange);
   }
 
@@ -197,6 +198,7 @@ class BundleSelectorWidget extends HTMLElement {
     amountEl.textContent = this.formatMoney(amount);
   }
 
+  /* 更新单个商品的价格 */
   updateSinglePrice() {
     const priceEl = this.container.querySelector('.bundle-option[data-qty="1"] .bundle-price');
     if (!priceEl) return;
@@ -211,8 +213,8 @@ class BundleSelectorWidget extends HTMLElement {
     priceEl.textContent = this.formatMoney(bundlePrice);
 
     const label = priceEl.closest('.bundle-option');
+    const crossedOriginal = selectedCompareAtPrice > 0 ? selectedCompareAtPrice : selectedBase;
     if (label) {
-      const crossedOriginal = selectedCompareAtPrice > 0 ? selectedCompareAtPrice : selectedBase;
       const totalSaved = crossedOriginal - bundlePrice;
       const saveBadge = label.querySelector('.bundle-save-badge');
       const originalPriceEl = label.querySelector('.bundle-original-price');
@@ -357,6 +359,10 @@ class BundleSelectorWidget extends HTMLElement {
       select.addEventListener('change', () => {
         this.updateTierPrice(label);
         this.updateAvailability(select);
+        // 如果当前修改的是选中套餐内的变体，同步更新商品详情价格
+        if (label === this.container.querySelector('input[name="bundle-qty"]:checked')?.closest('.bundle-option')) {
+          this.updatePriceToProductDetail();
+        }
       });
     });
   }
@@ -378,6 +384,7 @@ class BundleSelectorWidget extends HTMLElement {
     });
   }
 
+  /* 渲染阶梯选项 */
   renderTiers() {
     this.tierContainer.innerHTML = '';
 
@@ -426,9 +433,7 @@ class BundleSelectorWidget extends HTMLElement {
       const badgeStyleList = this.transformBadge(this.container.dataset.badges_style_list, ['Style-1', 'Style-2', 'Style-3', 'Style-4'])
 
       const badgePosition = this.container.dataset.all_badge_position
-      console.log(this.container.dataset.badges_position_list)
       const badgePositionList = this.transformBadge(this.container.dataset.badges_position_list, ['upper-right-corner', 'right-tilt', 'left-tilt'])
-      console.log(badgePositionList)
 
       const label = document.createElement('label');
       label.className = 'bundle-option';
@@ -444,6 +449,14 @@ class BundleSelectorWidget extends HTMLElement {
                   <div class="bundle-name">
                     <span>${comboName}</span>
                     <div class="bundle-save-badge" style="${savedAmount > 0 ? '' : 'display:none'}">
+                      <svg
+                        aria-hidden="true"
+                        focusable="false"
+                        class="icon icon--small"
+                        viewBox="0 0 12 12"
+                      >
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M7 0h3a2 2 0 012 2v3a1 1 0 01-.3.7l-6 6a1 1 0 01-1.4 0l-4-4a1 1 0 010-1.4l6-6A1 1 0 017 0zm2 2a1 1 0 102 0 1 1 0 00-2 0z" fill="currentColor">
+                      </svg>
                       <span>You Save</span>
                       <strong></strong>
                     </div>  
@@ -475,10 +488,10 @@ class BundleSelectorWidget extends HTMLElement {
       this.attachTierSelectListeners(label);
     });
 
-    // 默认选中数量为1的选项
-    const qty1Radio = this.tierContainer.querySelector('input[value="1"]');
-    if (qty1Radio) {
-      qty1Radio.checked = true;
+    // 默认选中第一个选项
+    const firstRadio = this.tierContainer.querySelector('.yx-option__radio:first-child');
+    if (firstRadio) {
+      // firstRadio.checked = true;
     }
     // 确保初次渲染后价格/折扣与当前变体保持一致
     this.updateAllTierPrices();
@@ -524,6 +537,7 @@ class BundleSelectorWidget extends HTMLElement {
       this.updateSinglePrice();
       this.updateAllTierPrices();
       this.updateAllAvailability();
+      this.updatePriceToProductDetail();
     }
   }
 
@@ -546,6 +560,7 @@ class BundleSelectorWidget extends HTMLElement {
     this.updateAllTierPrices();
     this.updateAvailability(this.variantSelect);
     this.updateAllAvailability();
+    this.updatePriceToProductDetail();
   }
 
   handleBundleOptionChange(event) {
@@ -558,6 +573,7 @@ class BundleSelectorWidget extends HTMLElement {
     const discountRate = selectedLabel?.dataset.discountValue || '';
     const discountType = selectedLabel?.dataset.discountType || '';
     this.boundChangeEvent({discountRate, discountType});
+    this.updatePriceToProductDetail();
   }
 
 /**
@@ -605,7 +621,6 @@ class BundleSelectorWidget extends HTMLElement {
   }
   // 发布阶梯优惠变化事件
    boundChangeEvent(detail) {
-    console.log('detail', detail)
     document.dispatchEvent(new CustomEvent('bundle:change', { detail }));
   }
 
@@ -615,6 +630,35 @@ class BundleSelectorWidget extends HTMLElement {
     this.toggleSubscribeItems();
     this.updateSinglePrice();
     this.updateAllTierPrices();
+    this.updatePriceToProductDetail();
+  }
+  
+  // 更新商品详情中的价格
+  updatePriceToProductDetail() {
+    const selectedRadio = this.container.querySelector('input[name="bundle-qty"]:checked');
+    if (!selectedRadio) return null;
+
+    const selectedLabel = selectedRadio.closest('.bundle-option');
+    if (!selectedLabel) return null;
+    const priceEl = selectedLabel.querySelector('.bundle-price');
+    const originalPriceEl = selectedLabel.querySelector('.bundle-original-price');
+
+    const bundlePrice = priceEl ? priceEl.textContent : '';
+    const originalPrice = originalPriceEl ? originalPriceEl.textContent : '';
+
+    // 根据 bundlePrice / originalPrice 计算总折扣百分比
+    const bp = parseFloat(bundlePrice.replace(/[^0-9.]/g, ''));
+    const op = parseFloat(originalPrice.replace(/[^0-9.]/g, ''));
+    const totalDiscountPercent = op > 0 ? Math.round((1 - bp / op) * 100) : 0;
+
+    const detail = { bundlePrice, originalPrice, totalDiscountPercent };
+    // 派发事件，供外部监听更新商品详情价格
+    document.dispatchEvent(new CustomEvent('bundle:priceUpdate', {
+      detail
+    }));
+    console.log('updatePriceToProductDetail', detail);
+
+    return detail;
   }
 }
 
