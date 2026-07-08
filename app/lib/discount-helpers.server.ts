@@ -7,6 +7,10 @@ export interface DiscountTier {
   value: string;
   /** Optional per-tier display message. */
   message?: string;
+  /** Combo display name (e.g. "2 for $20"). */
+  comboName?: string;
+  /** Badge text (e.g. "Best Value"). */
+  badgeText?: string;
   /** Discount type — inherited from parent DiscountEntry during render. */
   type?: "percentage" | "fixed_amount";
 }
@@ -15,8 +19,8 @@ export interface DiscountEntry {
   id: string;
   title: string;
   type: "percentage" | "fixed_amount";
-  /** "order" applies to the order subtotal; "product" applies to cart lines. */
-  scope: "order" | "product";
+  /** "order" applies to the order subtotal; "tiered" applies to cart lines. */
+  scope: "order" | "tiered";
   value: string;
   minQuantity: number;
   message?: string;
@@ -131,8 +135,14 @@ export async function writeConfig(
 
   for (const entry of config.discounts) {
     if (!entry.shopifyDiscountId) continue;
-    const err = await writeDiscountConfig(admin, entry.shopifyDiscountId, entry);
-    if (err) return err;
+    // Non-fatal: newly-created discount nodes may not be ready to accept
+    // metafields yet ("Owner does not exist"); the shop-level config is
+    // the authoritative source, so per-discount metafield errors are ignored.
+    try {
+      await writeDiscountConfig(admin, entry.shopifyDiscountId, entry);
+    } catch {
+      // ignore
+    }
   }
 
   return null;
@@ -198,7 +208,7 @@ export async function getLinkedDiscounts(
               title
               status
               discountClass
-              appDiscountType { functionId functionHandle }
+              appDiscountType { functionId }
             }
           }
         }
@@ -207,24 +217,23 @@ export async function getLinkedDiscounts(
   );
   const json = await resp.json();
   const nodes = json.data?.discountNodes?.nodes || [];
-  // Match by functionHandle or functionId (either handle string or UUID).
+  // Match by functionId (handle string).
   return nodes.filter((n: any) => {
     if (n.discount?.__typename !== "DiscountAutomaticApp") return false;
-    const handle = n.discount?.appDiscountType?.functionHandle || "";
     const funcId = n.discount?.appDiscountType?.functionId || "";
-    return ids.some((id: string) => handle === id || funcId.endsWith(id) || funcId === id);
+    return ids.some((id: string) => funcId.endsWith(id) || funcId === id);
   });
 }
 
 function discountClassesForScope(scope?: string): string[] {
   // Each node only declares its own discount class so Shopify's combine rules
   // don't block cross-type stacking (e.g. product + order).
-  if (scope === "product") return ["PRODUCT"];
+  if (scope === "tiered") return ["PRODUCT"];
   return ["ORDER"];
 }
 
 function combinesForScope(scope: string) {
-  if (scope === "product") {
+  if (scope === "tiered") {
     return {
       orderDiscounts: true,
       productDiscounts: false,

@@ -7,7 +7,7 @@ export interface ProductPickerDialogProps {
   /** Currently selected product IDs (for editing) */
   selectedIds?: string[];
   /** Called when user confirms selection */
-  onConfirm: (selectedIds: string[], selectedNames: Record<string, string>) => void;
+  onConfirm: (selectedIds: string[], selectedProducts: Record<string, { title: string; imageUrl?: string }>) => void;
   /** Called when user cancels */
   onCancel: () => void;
 }
@@ -29,7 +29,7 @@ export default function ProductPickerDialog({
   const [visible, setVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
-  const [selectedNames, setSelectedNames] = useState<Record<string, string>>({});
+  const [selectedProducts, setSelectedProducts] = useState<Record<string, { title: string; imageUrl?: string }>>({});
 
   // Fetch products when dialog opens
   useEffect(() => {
@@ -65,8 +65,8 @@ export default function ProductPickerDialog({
   );
 
   const products = (Array.isArray(fetcher.data)
-    ? (fetcher.data as { id: string; title: string }[])
-    : []) as { id: string; title: string }[];
+    ? (fetcher.data as { id: string; title: string, featuredImage: { url: string; altText: string } }[])
+    : []) as { id: string; title: string; featuredImage: { url: string; altText: string } }[];
 
   const isLoading = fetcher.state === "loading";
 
@@ -77,20 +77,23 @@ export default function ProductPickerDialog({
       )
     : products;
 
-  const toggleProduct = (p: { id: string; title: string }) => {
+  const toggleProduct = (p: { id: string; title: string, featuredImage: { url: string; altText: string } | null }) => {
     setSelectedIds((prev) => {
       const already = prev.includes(p.id);
       if (already) {
         return prev.filter((id) => id !== p.id);
       } else {
-        setSelectedNames((names) => ({ ...names, [p.id]: p.title }));
+        setSelectedProducts((prevProducts) => ({
+          ...prevProducts,
+          [p.id]: { title: p.title, imageUrl: p.featuredImage?.url || undefined },
+        }));
         return [...prev, p.id];
       }
     });
   };
 
   const handleConfirm = () => {
-    onConfirm(selectedIds, selectedNames);
+    onConfirm(selectedIds, selectedProducts);
   };
 
   if (!open) return null;
@@ -105,7 +108,7 @@ export default function ProductPickerDialog({
         alignItems: "center",
         justifyContent: "center",
       }}
-      onKeyDown={handleKeyDown}
+      // onKeyDown={handleKeyDown}
     >
       {/* Backdrop button satisfies the a11y interactive-element rule. */}
       <button
@@ -290,6 +293,32 @@ export default function ProductPickerDialog({
                       </svg>
                     )}
                   </div>
+
+                  {/* Product image */}
+                  {p.featuredImage?.url ? (
+                    <img
+                      src={p.featuredImage.url}
+                      alt={p.featuredImage.altText || p.title}
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "4px",
+                        objectFit: "cover",
+                        flexShrink: 0,
+                        background: "#f6f6f7",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "4px",
+                        flexShrink: 0,
+                        background: "#f6f6f7",
+                      }}
+                    />
+                  )}
 
                   {/* Product title */}
                   <span

@@ -40,10 +40,12 @@ export default function EditSubscriptionPage() {
   );
 
   const existingProducts = useMemo(() => {
-    const nodes: Array<{ id: string; title: string }> = group.products?.nodes ?? [];
+    const nodes: Array<{ id: string; title: string; featuredImage?: { url: string; altText?: string } | null }> = group.products?.nodes ?? [];
     const ids = nodes.map((p) => p.id);
-    const names: Record<string, string> = {};
-    nodes.forEach((p) => { names[p.id] = p.title; });
+    const names: Record<string, { title: string; imageUrl?: string }> = {};
+    nodes.forEach((p) => {
+      names[p.id] = { title: p.title, imageUrl: p.featuredImage?.url || undefined };
+    });
     return { ids, names };
   }, [group]);
 
@@ -54,7 +56,7 @@ export default function EditSubscriptionPage() {
   const [plans, setPlans] = useState<PlanState[]>(initialPlans);
   const [deletedPlanIds, setDeletedPlanIds] = useState<string[]>([]);
   const [productIds, setProductIds] = useState<string[]>(existingProducts.ids);
-  const [productNames, setProductNames] = useState<Record<string, string>>(existingProducts.names);
+  const [productNames, setProductNames] = useState<Record<string, { title: string; imageUrl?: string }>>(existingProducts.names);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
@@ -91,9 +93,9 @@ export default function EditSubscriptionPage() {
     setPlans((current: PlanState[]) => current.map((plan: PlanState, itemIndex: number) => (itemIndex === index ? { ...plan, [field]: value } : plan)));
   };
 
-  const handlePickerConfirm = (ids: string[], names: Record<string, string>) => {
+  const handlePickerConfirm = (ids: string[], selectedProducts: Record<string, { title: string; imageUrl?: string }>) => {
     setProductIds(ids);
-    setProductNames((prev) => ({ ...prev, ...names }));
+    setProductNames(selectedProducts);
     setPickerOpen(false);
   };
 
@@ -209,7 +211,23 @@ export default function EditSubscriptionPage() {
                         background: "#fafbff",
                       }}
                     >
-                      <span>{productNames[id] || id}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        {productNames[id]?.imageUrl && (
+                          <img
+                            src={productNames[id].imageUrl}
+                            alt={productNames[id]?.title || "product"}
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              borderRadius: "4px",
+                              objectFit: "cover",
+                              flexShrink: 0,
+                              background: "#f6f6f7",
+                            }}
+                          />
+                        )}
+                        <span>{productNames[id]?.title || id}</span>
+                      </div>
                       <s-button
                         variant="tertiary"
                         onClick={() => setProductIds(productIds.filter((x) => x !== id))}

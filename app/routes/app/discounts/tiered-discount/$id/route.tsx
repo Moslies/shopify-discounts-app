@@ -26,22 +26,22 @@ export default function EditTieredDiscountPage() {
 
   const [title, setTitle] = useState(entry.title);
   const [type, setType] = useState<"percentage" | "fixed_amount">(entry.type);
-  const [discountTiers, setDiscountTiers] = useState<{ minQuantity: number; value: string; message?: string }[]>(
+  const [discountTiers, setDiscountTiers] = useState<{ minQuantity: number; value: string; message?: string; comboName?: string; badgeText?: string }[]>(
     entry.tiers && entry.tiers.length > 0
       ? entry.tiers
-      : [{ minQuantity: entry.minQuantity, value: entry.value, message: "" }]
+      : [{ minQuantity: entry.minQuantity, value: entry.value, message: "", comboName: "", badgeText: "" }]
   );
   const [active, setActive] = useState(entry.active);
 
   // Product selection state
   const [productIds, setProductIds] = useState<string[]>(entry.productIds || []);
-  const [productNames, setProductNames] = useState<Record<string, string>>(initialProductMap || {});
+  const [productNames, setProductNames] = useState<Record<string, { title: string; imageUrl?: string }>>(initialProductMap || {});
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const addTier = () => {
     const last = discountTiers[discountTiers.length - 1];
     const nextQty = last ? last.minQuantity + 1 : 2;
-    setDiscountTiers([...discountTiers, { minQuantity: nextQty, value: "10", message: "" }]);
+    setDiscountTiers([...discountTiers, { minQuantity: nextQty, value: "10", message: "", comboName: "", badgeText: "" }]);
   };
 
   const removeTier = (index: number) => {
@@ -49,7 +49,7 @@ export default function EditTieredDiscountPage() {
     setDiscountTiers(discountTiers.filter((_, i) => i !== index));
   };
 
-  const updateTier = (index: number, field: "minQuantity" | "value" | "message", val: string) => {
+  const updateTier = (index: number, field: "minQuantity" | "value" | "message" | "comboName" | "badgeText", val: string) => {
     setDiscountTiers((prev) =>
       prev.map((tier, i) =>
         i === index
@@ -86,9 +86,9 @@ export default function EditTieredDiscountPage() {
     );
   };
 
-  const handlePickerConfirm = (ids: string[], names: Record<string, string>) => {
+  const handlePickerConfirm = (ids: string[], selectedProducts: Record<string, { title: string; imageUrl?: string }>) => {
     setProductIds(ids);
-    setProductNames((prev) => ({ ...prev, ...names }));
+    setProductNames(selectedProducts);
     setPickerOpen(false);
   };
 
@@ -140,7 +140,17 @@ export default function EditTieredDiscountPage() {
             <s-stack direction="block" gap="base">
               <s-text color="base">Discount Tiers</s-text>
               {discountTiers.map((tier, index) => (
-                <s-grid key={index} gridTemplateColumns="repeat(13, 1fr)" gap="base">
+                <s-grid key={index} gridTemplateColumns="repeat(21, 1fr)" gap="base">
+                  <s-grid-item gridColumn="span 4" gridRow="span 1">
+                      <s-text-field
+                        label="Combo Name"
+                        value={tier.comboName || ""}
+                        placeholder="e.g. 2 for $20"
+                        onInput={(e) =>
+                          updateTier(index, "comboName", (e.target as HTMLInputElement).value)
+                        }
+                      ></s-text-field>
+                    </s-grid-item>
                     <s-grid-item gridColumn="span 4" gridRow="span 1">
                       <s-text-field
                         label="Min Qty"
@@ -168,6 +178,16 @@ export default function EditTieredDiscountPage() {
                         placeholder="e.g. Buy 2 Save 10%"
                         onInput={(e) =>
                           updateTier(index, "message", (e.target as HTMLInputElement).value)
+                        }
+                      ></s-text-field>
+                    </s-grid-item>
+                    <s-grid-item gridColumn="span 4" gridRow="span 1">
+                      <s-text-field
+                        label="Badge Text"
+                        value={tier.badgeText || ""}
+                        placeholder="e.g. Best Value"
+                        onInput={(e) =>
+                          updateTier(index, "badgeText", (e.target as HTMLInputElement).value)
                         }
                       ></s-text-field>
                     </s-grid-item>
@@ -218,7 +238,23 @@ export default function EditTieredDiscountPage() {
                         marginTop: "12px",
                       }}
                     >
-                      <span>{productNames[id] || id}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        {productNames[id]?.imageUrl && (
+                          <img
+                            src={productNames[id].imageUrl}
+                            alt={productNames[id]?.title || "product"}
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              borderRadius: "4px",
+                              objectFit: "cover",
+                              flexShrink: 0,
+                              background: "#f6f6f7",
+                            }}
+                          />
+                        )}
+                        <span>{productNames[id]?.title || id}</span>
+                      </div>
                       <s-button
                         variant="tertiary"
                         onClick={() => setProductIds(productIds.filter((x) => x !== id))}

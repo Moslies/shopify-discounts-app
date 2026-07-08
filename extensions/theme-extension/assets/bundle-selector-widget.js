@@ -357,18 +357,24 @@ class BundleSelectorWidget extends HTMLElement {
       select.addEventListener('change', () => {
         this.updateTierPrice(label);
         this.updateAvailability(select);
-        // 如果这是数量为1的阶梯，同步到隐藏的master select
-        if (label.dataset.qty === '1') {
-          this.variantSelect.value = select.value;
-          // 触发主选择器的 change 事件，确保所有依赖更新
-          try {
-            this.variantSelect.dispatchEvent(new Event('change', { bubbles: true }));
-          } catch (e) {
-            // 某些环境可能不支持 Event 构造器，作为回退直接调用更新函数
-            this.updateSinglePrice();
-          }
-        }
       });
+    });
+  }
+
+/**
+ * 转换徽章文本
+ * @param {string} text - 需要转换的徽章文本
+ * @returns {Array} 转换后的数组
+ */
+  transformBadge(text, styles) {
+  // 如果输入文本为空，则返回空数组
+    if (!text) return [];
+  // 此处似乎缺少条件判断语句，需要补充完整
+    return text.split(',').map((style) => {
+      if (styles.includes(style.trim())) {
+        return style.trim();
+      }
+      return '';
     });
   }
 
@@ -378,7 +384,7 @@ class BundleSelectorWidget extends HTMLElement {
     let hasQty1Tier = this.tiers.some((tier) => tier.minQuantity === 1);
 
     if (!hasQty1Tier) {
-      this.tiers.unshift({ minQuantity: 1, value: "0", message: "", type: "percentage" });
+      // this.tiers.unshift({ minQuantity: 1, value: "0", message: "", type: "percentage" });
       hasQty1Tier = true;
     }
 
@@ -411,9 +417,18 @@ class BundleSelectorWidget extends HTMLElement {
         }
         savedAmount = originalCrossed - discountedTotal;
       }
+      
+      const badgeText = tier.badgeText || ``;
+      const comboName = tier.comboName || `${qty} Pack`;
 
-      // todo: 热门套餐索引显示
-      const isPopular = true
+      const badgeStyle = this.container.dataset.all_badge_style || 'Style-1';
+      
+      const badgeStyleList = this.transformBadge(this.container.dataset.badges_style_list, ['Style-1', 'Style-2', 'Style-3', 'Style-4'])
+
+      const badgePosition = this.container.dataset.all_badge_position
+      console.log(this.container.dataset.badges_position_list)
+      const badgePositionList = this.transformBadge(this.container.dataset.badges_position_list, ['upper-right-corner', 'right-tilt', 'left-tilt'])
+      console.log(badgePositionList)
 
       const label = document.createElement('label');
       label.className = 'bundle-option';
@@ -427,7 +442,7 @@ class BundleSelectorWidget extends HTMLElement {
                 <div class="bundle-radio-item">
                   <input class="yx-option__radio" style="width: 20px; height: 20px;" type="radio" name="bundle-qty" value="${qty}">
                   <div class="bundle-name">
-                    <span>${qty} Pack</span>
+                    <span>${comboName}</span>
                     <div class="bundle-save-badge" style="${savedAmount > 0 ? '' : 'display:none'}">
                       <span>You Save</span>
                       <strong></strong>
@@ -454,7 +469,7 @@ class BundleSelectorWidget extends HTMLElement {
             <div class="variant-specification">${this.specification}</div>
             ${this.buildVariantSelects(qty)}
           </div>
-          ${isPopular ? '<div class="popular-badge">Most Popular</div>' : ''}`;
+          ${badgeText ? `<div class="${badgeStyleList[index] ? badgeStyleList[index] : badgeStyle} ${badgePositionList[index] ? badgePositionList[index] : badgePosition}">${badgeText}</div>` : ''}`;
 
       this.tierContainer.appendChild(label);
       this.attachTierSelectListeners(label);
@@ -551,6 +566,7 @@ class BundleSelectorWidget extends HTMLElement {
  * @returns {Array} 返回包含变体信息的数组，每个元素是一个对象，包含id、quantity和properties属性
  */
   getBundleSelectedVariants() {
+    if (this.tiers.length === 0) return [];
   // 获取选中的单选按钮元素
     const selectedRadio = this.container.querySelector('input[name="bundle-qty"]:checked');
   // 将选中的值转换为整数，默认值为1

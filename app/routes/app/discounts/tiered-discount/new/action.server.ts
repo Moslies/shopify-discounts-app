@@ -41,7 +41,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     id: generateId(),
     title,
     type,
-    scope: "product",
+    scope: "tiered",
     value: firstTier?.value || "10",
     minQuantity: firstTier?.minQuantity || 0,
     active,

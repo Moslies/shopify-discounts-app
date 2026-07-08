@@ -47,7 +47,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     ...config.discounts[idx],
     title,
     type,
-    scope: "product",
+    scope: "tiered",
     value: firstTier?.value || "10",
     minQuantity: firstTier?.minQuantity || 0,
     active,

@@ -13,7 +13,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       `#graphql
       query searchProducts($query: String!) {
         products(first: 25, query: $query) {
-          nodes { id title }
+          nodes { 
+            id 
+            title 
+            featuredImage {
+              url
+              altText
+            }
+          }
         }
       }`,
       { variables: { query } }
@@ -24,7 +31,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       `#graphql
       query allProducts {
         products(first: 250) {
-          nodes { id title }
+          nodes { 
+            id 
+            title 
+            featuredImage {
+              url
+              altText
+            }
+          }
         }
       }`
     );

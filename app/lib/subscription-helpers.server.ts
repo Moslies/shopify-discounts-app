@@ -40,6 +40,7 @@ export const GET_SELLING_PLAN_GROUP_QUERY = `#graphql
         nodes {
           id
           title
+          featuredImage { url altText }
         }
       }
       productsCount {

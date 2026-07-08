@@ -35,13 +35,15 @@ interface DiscountTier {
   minQuantity: number;
   value: string;
   message?: string;
+  comboName?: string;
+  badgeText?: string;
 }
 
 interface DiscountEntry {
   id: string;
   title: string;
   type: "percentage" | "fixed_amount";
-  scope: "order" | "product";
+  scope: "order" | "tiered";
   value: string;
   minQuantity: number;
   active: boolean;
@@ -234,7 +236,7 @@ function allProductEntries(input: RunInput): DiscountEntry[] {
   if (nodeJson) {
     try {
       const nodeEntries = entriesFromConfig(JSON.parse(nodeJson)).filter(
-        (e) => e.active && e.scope === "product"
+        (e) => e.active && e.scope === "tiered"
       );
       for (const e of nodeEntries) { seen.add(e.id); result.push(e); }
     } catch {}
@@ -245,7 +247,7 @@ function allProductEntries(input: RunInput): DiscountEntry[] {
   if (shopJson) {
     try {
       const shopEntries = entriesFromConfig(JSON.parse(shopJson)).filter(
-        (e) => e.active && e.scope === "product" && !seen.has(e.id)
+        (e) => e.active && e.scope === "tiered" && !seen.has(e.id)
       );
       result.push(...shopEntries);
     } catch {}
@@ -266,8 +268,8 @@ export function run(input: RunInput): FunctionRunResult {
   try { config = JSON.parse(configJson); } catch { return noDiscount; }
 
   const entries = entriesFromConfig(config);
-  const productEntries = entries.filter((e) => e.active && e.scope === "product");
-  const orderEntries = entries.filter((e) => e.active && e.scope !== "product");
+  const productEntries = entries.filter((e) => e.active && e.scope === "tiered");
+  const orderEntries = entries.filter((e) => e.active && e.scope !== "tiered");
 
   const cartLines = input.cart.lines;
   const currencyCode = input.cart.cost?.totalAmount?.currencyCode || "";
