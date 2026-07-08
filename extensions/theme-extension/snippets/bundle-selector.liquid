@@ -68,8 +68,8 @@
   data-variant-flag="{{ variant_flag | escape }}"
   data-all_badge_style="{{ all_badge_style | escape }}"
   data-badges_style_list="{{ badges_style_list | escape }}"
-  data-all_badge_position="{{ all_badge_position | escape }}"
-  data-badges_position_list="{{ badges_position_list| replace: '，', ',' | escape }}"
+  data-all_badge_position="{{ all_badge_position | replace: '，', ','  | escape }}"
+  data-badges_position_list="{{ badges_position_list | replace: '，', ',' | escape }}"
 >
   {% if tiers_json != '[]' and tiers_json != blank and tiers_json != null %}
     <div style="{% if show_card_shadow %}box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);{% endif %}">
@@ -289,6 +289,7 @@
 
 .bundle-save-badge {
   display: flex;
+  align-items: center;
   gap: 4px;
   padding: 0px 12px;
   border-radius: 12px;
@@ -297,9 +298,10 @@
   background: #F0FDF4;
   color: #9CA3AF;
   border: 1px solid #9CA3AF;
-
 }
-
+.bundle-save-badge .icon--small {
+    height: 12px;
+}
 .bundle-save-badge strong {
   font-size: 12px;
   font-weight: 600;
