@@ -692,7 +692,7 @@ class BundleSelectorWidget extends HTMLElement {
       new Set([...mainPriceEls, ...salePriceItemEls, ...regularPriceItemEls])
     );
     priceElsToUpdate.forEach((el) => {
-      el.textContent = bundlePrice;
+      el.textContent = detail.bundlePrice;
     })
     // 更新原价
     const comparePriceItemEls = Array.from(
@@ -700,12 +700,12 @@ class BundleSelectorWidget extends HTMLElement {
     );
 
     comparePriceItemEls.forEach((el) => {
-      el.textContent = this.formatMoney(originalPrice);
+      el.textContent = detail.originalPrice
     });
     // 折扣标签更新
     const badgeNowraps = document.querySelectorAll('.price__badge-sale .nowrap');
     badgeNowraps.forEach((el) => {
-      el.innerHTML = `SAVE ${totalDiscountPercent}% OFF`;
+      el.innerHTML = `SAVE ${detail.totalDiscount}`;
     });
 
     // 派发事件，供外部监听更新商品详情价格
