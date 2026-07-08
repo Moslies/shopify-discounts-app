@@ -187,7 +187,7 @@ class BundleSelectorWidget extends HTMLElement {
     let labelEl = saveBadge.querySelector('span');
     if (!labelEl) {
       labelEl = document.createElement('span');
-      labelEl.textContent = 'You Save';
+      labelEl.textContent = 'SAVE';
       saveBadge.appendChild(labelEl);
     }
     let amountEl = saveBadge.querySelector('strong');
@@ -207,8 +207,9 @@ class BundleSelectorWidget extends HTMLElement {
     const selectedCompareAtPrice = this.getSelectCompareAtPrice(this.variantSelect);
     let bundlePrice = selectedBase;
     const subDiscount = parseFloat(this.subscriptionDiscount || 0);
-    if (subDiscount > 0) {
-      bundlePrice = Math.round(bundlePrice * (1 - subDiscount / 100));
+    const subBps = Math.round(subDiscount * 100);
+    if (subBps > 0) {
+      bundlePrice = Math.round(bundlePrice * (10000 - subBps) / 10000);
     }
     priceEl.textContent = this.formatMoney(bundlePrice);
 
@@ -263,23 +264,44 @@ class BundleSelectorWidget extends HTMLElement {
 
     const discountValue = parseFloat(label.dataset.discountValue || '0');
     const discountType = label.dataset.discountType || 'percentage';
+    const discountBps = Math.round(discountValue * 100); // 转为基点，如 15 → 1500
 
     let discountedTotal;
+    const subBps = Math.round(parseFloat(this.subscriptionDiscount || 0) * 100);
 
-    if (discountType === 'fixed_amount') {
-      const discountCents = discountValue * 100 * qty;
-      discountedTotal = Math.max(0, baseTotal - discountCents);
+    if (tierSelects.length > 0) {
+      // 将折扣应用到单个商品，得到优惠后单价，再求和（支持不同变体价格不同）
+      if (discountType === 'fixed_amount') {
+        const discountCents = Math.round(discountValue * 100);
+        discountedTotal = tierSelects.reduce((sum, select) => {
+          let itemPrice = Math.max(0, this.getSelectPrice(select) - discountCents);
+          if (subBps > 0) {
+            itemPrice = Math.round(itemPrice * (10000 - subBps) / 10000);
+          }
+          return sum + itemPrice;
+        }, 0);
+      } else {
+        discountedTotal = tierSelects.reduce((sum, select) => {
+          let itemPrice = this.getSelectPrice(select);
+          itemPrice = Math.round(itemPrice * (10000 - discountBps) / 10000);
+          if (subBps > 0) {
+            itemPrice = Math.round(itemPrice * (10000 - subBps) / 10000);
+          }
+          return sum + itemPrice;
+        }, 0);
+      }
     } else {
-      discountedTotal = Math.round(baseTotal * (1 - discountValue / 100));
+      // 无变体选择器时，所有商品同价，先折扣再求和结果相同
+      if (discountType === 'fixed_amount') {
+        const discountCents = Math.round(discountValue * 100) * qty;
+        discountedTotal = Math.max(0, baseTotal - discountCents);
+      } else {
+        discountedTotal = Math.round(baseTotal * (10000 - discountBps) / 10000);
+      }
+      if (subBps > 0) {
+        discountedTotal = Math.round(discountedTotal * (10000 - subBps) / 10000);
+      }
     }
-
-    // 叠加订阅折扣（bundle-price 应包含订阅折扣）
-    const subDiscount = parseFloat(this.subscriptionDiscount || 0);
-    if (subDiscount > 0) {
-      discountedTotal = Math.round(discountedTotal * (1 - subDiscount / 100));
-    }
-
-    // discountedTotal 为捆绑后的售价（包含订阅折扣，如果存在）
 
     label.querySelector('.bundle-price').textContent = this.formatMoney(discountedTotal);
     label.querySelector('.bundle-original-price').textContent = this.formatMoney(originalCrossed);
@@ -409,18 +431,21 @@ class BundleSelectorWidget extends HTMLElement {
       let discountedTotal;
       let savedAmount;
       if (discountType === 'fixed_amount') {
-        const discountCents = discountValue * 100 * qty;
+        const discountCents = Math.round(discountValue * 100) * qty;
         discountedTotal = Math.max(0, baseTotal - discountCents);
         const subDiscount = parseFloat(this.subscriptionDiscount || 0);
-        if (subDiscount > 0) {
-          discountedTotal = Math.round(discountedTotal * (1 - subDiscount / 100));
+        const subBps = Math.round(subDiscount * 100);
+        if (subBps > 0) {
+          discountedTotal = Math.round(discountedTotal * (10000 - subBps) / 10000);
         }
         savedAmount = originalCrossed - discountedTotal;
       } else {
-        discountedTotal = Math.round(baseTotal * (1 - discountValue / 100));
+        const discountBps = Math.round(discountValue * 100);
+        discountedTotal = Math.round(baseTotal * (10000 - discountBps) / 10000);
         const subDiscount = parseFloat(this.subscriptionDiscount || 0);
-        if (subDiscount > 0) {
-          discountedTotal = Math.round(discountedTotal * (1 - subDiscount / 100));
+        const subBps = Math.round(subDiscount * 100);
+        if (subBps > 0) {
+          discountedTotal = Math.round(discountedTotal * (10000 - subBps) / 10000);
         }
         savedAmount = originalCrossed - discountedTotal;
       }
@@ -457,7 +482,7 @@ class BundleSelectorWidget extends HTMLElement {
                       >
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M7 0h3a2 2 0 012 2v3a1 1 0 01-.3.7l-6 6a1 1 0 01-1.4 0l-4-4a1 1 0 010-1.4l6-6A1 1 0 017 0zm2 2a1 1 0 102 0 1 1 0 00-2 0z" fill="currentColor">
                       </svg>
-                      <span>You Save</span>
+                      <span>SAVE</span>
                       <strong></strong>
                     </div>  
                   </div>
@@ -650,8 +675,18 @@ class BundleSelectorWidget extends HTMLElement {
     const bp = parseFloat(bundlePrice.replace(/[^0-9.]/g, ''));
     const op = parseFloat(originalPrice.replace(/[^0-9.]/g, ''));
     const totalDiscountPercent = op > 0 ? Math.round((1 - bp / op) * 100) : 0;
+    const totalDiscount = op - bp;
+    const detail = { bundlePrice, originalPrice, totalDiscountPercent, totalDiscount: this.formatMoney(totalDiscount * 100) };
 
-    const detail = { bundlePrice, originalPrice, totalDiscountPercent };
+    const salePriceEl = document.querySelector('.price-item--regular');
+    salePriceEl.textContent = this.formatMoney(this.compareAtPrice);
+
+    const productPriceEl = document.querySelector('.price-item--last');
+    productPriceEl.textContent = bundlePrice;
+
+    const badgeEl = document.querySelector('.price__badge-sale .nowrap');
+    badgeEl.textContent = `SAVE ${totalDiscountPercent}% OFF`;
+
     // 派发事件，供外部监听更新商品详情价格
     document.dispatchEvent(new CustomEvent('bundle:priceUpdate', {
       detail
