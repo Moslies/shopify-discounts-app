@@ -700,7 +700,7 @@ class BundleSelectorWidget extends HTMLElement {
     );
 
     comparePriceItemEls.forEach((el) => {
-      el.textContent = this.formatMoney(originalPrice);
+      el.textContent = this.formatMoney(this.compareAtPrice);
     });
     // 折扣标签更新
     const badgeNowraps = document.querySelectorAll('.price__badge-sale .nowrap');
