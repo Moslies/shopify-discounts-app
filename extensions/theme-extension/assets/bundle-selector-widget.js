@@ -391,9 +391,12 @@ class BundleSelectorWidget extends HTMLElement {
     }
   }
     /* 构建一个套餐下拉选择器 */
-  buildBundleSelect(tiers) {
+  buildBundleSelect(tiers, selectedValue) {
+    const selectDiv = document.createElement('div');
+    selectDiv.classList.add('bundle-combo-select-wrapper','no-background', 'color-background-1 accent-color-accent-1 accent-2-color-text');
     const select = document.createElement('select');
     select.classList.add('bundle-combo-select', 'sticky-atc__variant-select', 'select__select', 'variant-dropdown');
+    select.value = selectedValue;
     const optionsHtml = tiers.map((tier) => {
       const comboName = tier.comboName || `${tier.minQuantity} Pack`;
       return `
@@ -404,8 +407,8 @@ class BundleSelectorWidget extends HTMLElement {
     })
       .join('');
     select.innerHTML = optionsHtml;
-
-    return select;
+    selectDiv.appendChild(select);
+    return selectDiv;
   }
 
   /* 构建变体选择器 */
@@ -733,8 +736,14 @@ class BundleSelectorWidget extends HTMLElement {
     // skicka折扣标签更新
     const productFormInput = document.querySelector('.sticky-atc__variant-select').closest('.product-form__input')
     const variantSelectDiv = productFormInput.querySelector('.select');
-    variantSelectDiv.style.display = 'none';
-    productFormInput.appendChild(this.buildBundleSelect(this.mergedTiers));
+    const comboSelectDiv = productFormInput.querySelector('.bundle-combo-select-wrapper');
+    if (comboSelectDiv) {
+      comboSelectDiv.querySelector('.bundle-combo-select').value = selectedRadio.value;
+    } else {
+      variantSelectDiv.style.display = 'none';
+      productFormInput.appendChild(this.buildBundleSelect(this.mergedTiers, selectedRadio.value));
+    }
+
 
     // 派发事件，供外部监听更新商品详情价格
     document.dispatchEvent(new CustomEvent('bundle:priceUpdate', {
