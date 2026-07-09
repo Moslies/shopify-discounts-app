@@ -391,9 +391,10 @@ class BundleSelectorWidget extends HTMLElement {
     }
   }
     /* 构建一个套餐下拉选择器 */
-  buildBundleSelect(tiers) {
+  buildBundleSelect(tiers, selectedQty) {
     const select = document.createElement('select');
-    select.classList.add('bundle-combo-select', 'sticky-atc__variant-select', 'select__select', 'variant-dropdown');
+    select.value = selectedQty;
+    select.classList.add('bundle-combo-select', 'sticky-atc__variant-select', 'select__select', 'variant-dropdown', 'select-no-background', 'color-background-1', 'accent-color-accent-1', 'accent-2-color-text-1');
     const optionsHtml = tiers.map((tier) => {
       const comboName = tier.comboName || `${tier.minQuantity} Pack`;
       return `
@@ -689,7 +690,7 @@ class BundleSelectorWidget extends HTMLElement {
     if (!selectedLabel) return null;
     const priceEl = selectedLabel.querySelector('.bundle-price');
     const originalPriceEl = selectedLabel.querySelector('.bundle-original-price');
-
+    console.log(selectedRadio.value);
     const bundlePrice = priceEl ? priceEl.textContent : '';
     const originalPrice = originalPriceEl ? originalPriceEl.textContent : '';
 
@@ -734,7 +735,7 @@ class BundleSelectorWidget extends HTMLElement {
     const productFormInput = document.querySelector('.sticky-atc__variant-select').closest('.product-form__input')
     const variantSelectDiv = productFormInput.querySelector('.select');
     variantSelectDiv.style.display = 'none';
-    productFormInput.appendChild(this.buildBundleSelect(this.mergedTiers));
+    productFormInput.appendChild(this.buildBundleSelect(this.mergedTiers, selectedRadio.value));
 
     // 派发事件，供外部监听更新商品详情价格
     document.dispatchEvent(new CustomEvent('bundle:priceUpdate', {
