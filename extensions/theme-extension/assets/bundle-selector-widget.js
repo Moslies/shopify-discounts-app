@@ -407,7 +407,20 @@ class BundleSelectorWidget extends HTMLElement {
       .join('');
     select.innerHTML = optionsHtml;
     selectDiv.appendChild(select);
-    console.log(selectDiv);
+
+    // combo-select 变化时同步选中对应的套餐 radio
+    select.addEventListener('change', () => {
+      const qty = parseInt(select.value, 10);
+      const targetOption = this.container.querySelector(`.bundle-option[data-qty="${qty}"]`);
+      if (targetOption) {
+        const radio = targetOption.querySelector('.yx-option__radio');
+        if (radio && !radio.checked) {
+          radio.checked = true;
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    });
+
     return selectDiv;
   }
 
@@ -732,7 +745,7 @@ class BundleSelectorWidget extends HTMLElement {
     badgeNowraps.forEach((el) => {
       el.innerHTML = `SAVE ${detail.totalDiscount}`;
     });
-
+    // document.querySelector('.bundle-selector').appendChild(this.buildBundleSelect(this.mergedTiers, Number(selectedRadio.value))); // 本地测试
     // skicka折扣标签更新
     if (document.querySelector('.sticky-atc__variant-select')){
       const productFormInput = document.querySelector('.sticky-atc__variant-select').closest('.product-form__input')
