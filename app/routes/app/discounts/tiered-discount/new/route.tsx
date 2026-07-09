@@ -88,12 +88,7 @@ export default function NewTieredDiscountPage() {
 
   return (
     <s-page heading="New Tiered Discount">
-      <s-section>
-        <s-button variant="tertiary" onClick={() => navigate("/app/discounts/tiered-discount")}>
-          Back
-        </s-button>
-      </s-section>
-
+      <s-link slot="breadcrumb-actions" href="/app/discounts/tiered-discount">tiered-discount</s-link>
       <form onSubmit={handleSubmit}>
         {/* Section 1: Basic Details */}
         <s-box paddingBlockEnd="small">
