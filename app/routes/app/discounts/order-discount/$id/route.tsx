@@ -81,12 +81,7 @@ export default function EditOrderDiscountPage() {
 
   return (
     <s-page heading={`Edit: ${entry.title || "Untitled"}`}>
-      <s-section>
-        <s-button variant="tertiary" onClick={() => navigate("/app/discounts/order-discount")}>
-          Back
-        </s-button>
-      </s-section>
-
+      <s-link slot="breadcrumb-actions" href="/app/discounts/order-discount">tiered-discount</s-link>
       <form onSubmit={handleSubmit}>
         {/* Section 1: Basic Details */}
         <s-box paddingBlockEnd="small">

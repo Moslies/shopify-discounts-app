@@ -121,10 +121,7 @@ export default function EditSubscriptionPage() {
 
   return (
     <s-page heading={`Edit: ${group.name}`}>
-      <s-button variant="tertiary" onClick={() => navigate("/app/subscriptions")}>
-        Back
-      </s-button>
-
+      <s-link slot="breadcrumb-actions" href="/app/subscriptions">subscriptions</s-link>
       <form onSubmit={handleSubmit}>
         <s-box paddingBlockEnd="small">
           <s-section heading="Group details">

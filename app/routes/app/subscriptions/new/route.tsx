@@ -78,10 +78,7 @@ export default function NewSubscriptionPage() {
 
   return (
     <s-page heading="Create subscription group">
-      <s-button variant="tertiary" onClick={() => navigate("/app/subscriptions")}>
-        Back
-      </s-button>
-
+      <s-link slot="breadcrumb-actions" href="/app/subscriptions">subscriptions</s-link>
       <form onSubmit={handleSubmit}>
         <s-box paddingBlockEnd="small">
           <s-section heading="Group details">
