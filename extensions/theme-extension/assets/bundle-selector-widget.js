@@ -739,10 +739,10 @@ class BundleSelectorWidget extends HTMLElement {
       const variantSelectDiv = productFormInput.querySelector('.select');
       const comboSelectDiv = productFormInput.querySelector('.bundle-combo-select-wrapper');
       if (comboSelectDiv) {
-        comboSelectDiv.querySelector('.bundle-combo-select').value = selectedRadio.value;
+        comboSelectDiv.querySelector('.bundle-combo-select').value = Number(selectedRadio.value);
       } else {
         variantSelectDiv.style.display = 'none';
-        productFormInput.appendChild(this.buildBundleSelect(this.mergedTiers, selectedRadio.value));
+        productFormInput.appendChild(this.buildBundleSelect(this.mergedTiers, Number(selectedRadio.value)));
       }
     }
 
