@@ -549,6 +549,13 @@ class BundleSelectorWidget extends HTMLElement {
 
       this.tierContainer.appendChild(label);
       this.attachTierSelectListeners(label);
+      // 点击变体选择器时不冒泡事件
+      const variantEl = label.querySelector('.bundle-variant');
+      if (variantEl) {
+        variantEl.addEventListener('click', (e) => e.stopPropagation());
+      }
+      // 已选中的 bundle-option 再次点击时取消选中
+      // this.uncheckAllTiers(label);
     });
 
     // 默认选中第一个选项
@@ -561,6 +568,22 @@ class BundleSelectorWidget extends HTMLElement {
     this.updateAllAvailability();
   }
 
+  /* 取消选中套餐 */
+  uncheckAllTiers(label) {
+    // todo: 取消选中页面价格需要更新
+    label.addEventListener('click', (e) => {
+        const radio = label.querySelector('.yx-option__radio');
+        // 点击 radio 本身时不拦截，让原生行为处理
+        if (e.target.closest('.yx-option__radio')) return;
+        if (radio && radio.checked) {
+          e.preventDefault();
+          radio.checked = false;
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+  }
+
+  /* 生成套餐选项的唯一标识符 */
   generateBid(number, salt = 'my_secret_key') {
     let str = number.toString() + salt;
     let hash = 0;
@@ -593,6 +616,7 @@ class BundleSelectorWidget extends HTMLElement {
     }
   }
 
+  /* 处理货币变化 */
   handleCurrencyChange(event) {
     const newCurrency = event?.detail?.currency || (window.Shopify && window.Shopify.currency && window.Shopify.currency.active);
     if (newCurrency) {
@@ -604,6 +628,7 @@ class BundleSelectorWidget extends HTMLElement {
     }
   }
 
+  /* 处理变体选择器变化 */
   boundVariantSelectChange() {
     // 当 master select 改变时，把所有 tier-select 同步到相同变体（若该 option 存在）
     const newVal = this.variantSelect.value;
@@ -626,9 +651,9 @@ class BundleSelectorWidget extends HTMLElement {
     this.updatePriceToProductDetail();
   }
 
+  /* 处理套餐选项变化 */
   handleBundleOptionChange(event) {
     const target = event.target;
-  
     if (!target || target.name !== 'bundle-qty') return;
 
     const selectedRadio = this.container.querySelector('input[name="bundle-qty"]:checked');
@@ -715,7 +740,7 @@ class BundleSelectorWidget extends HTMLElement {
     const totalDiscountPercent = op > 0 ? Math.round((1 - bp / op) * 100) : 0;
     const totalDiscount = op - bp;
     const detail = { bundlePrice, originalPrice, totalDiscountPercent, totalDiscount: this.formatMoney(totalDiscount * 100) };
-
+    console.log(detail); // 打印日志，用于调试
     // 售价更新
     const mainPriceEls = Array.from(
       document.querySelectorAll('.price__sale .main-price, .price__regular .main-price')
