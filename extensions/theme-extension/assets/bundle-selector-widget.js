@@ -393,7 +393,7 @@ class BundleSelectorWidget extends HTMLElement {
     /* 构建一个套餐下拉选择器 */
   buildBundleSelect(tiers, selectedValue) {
     const selectDiv = document.createElement('div');
-    selectDiv.classList.add('bundle-combo-select-wrapper','no-background', 'color-background-1 accent-color-accent-1 accent-2-color-text');
+    selectDiv.classList.add('bundle-combo-select-wrapper', 'select', 'no-background', 'color-background-1', 'accent-color-accent-1', 'accent-2-color-text')
     const select = document.createElement('select');
     select.classList.add('bundle-combo-select', 'sticky-atc__variant-select', 'select__select', 'variant-dropdown');
     select.value = selectedValue;
@@ -408,6 +408,7 @@ class BundleSelectorWidget extends HTMLElement {
       .join('');
     select.innerHTML = optionsHtml;
     selectDiv.appendChild(select);
+    console.log(selectDiv);
     return selectDiv;
   }
 
@@ -737,6 +738,7 @@ class BundleSelectorWidget extends HTMLElement {
     const productFormInput = document.querySelector('.sticky-atc__variant-select').closest('.product-form__input')
     const variantSelectDiv = productFormInput.querySelector('.select');
     const comboSelectDiv = productFormInput.querySelector('.bundle-combo-select-wrapper');
+    console.log(123, comboSelectDiv);
     if (comboSelectDiv) {
       comboSelectDiv.querySelector('.bundle-combo-select').value = selectedRadio.value;
     } else {
