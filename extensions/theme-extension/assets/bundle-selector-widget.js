@@ -3,6 +3,7 @@ class BundleSelectorWidget extends HTMLElement {
     super();
     this._initialized = false;
     this.subscriptionDiscount = 0;
+    this.mergedTiers = [];
     this.boundHandleCurrencyChange = this.handleCurrencyChange.bind(this);
     this.boundVariantSelectChange = this.boundVariantSelectChange.bind(this);
     this.boundSubscriptionChange = this.handleSubscriptionChange.bind(this);
@@ -121,66 +122,6 @@ class BundleSelectorWidget extends HTMLElement {
     this.container.dataset.currencyCode = code;
   }
 
-  buildVariantSelects(qty) {
-    const optionsHtml = Array.from(this.variantSelect.options)
-      .map((opt) => `
-          <option value="${opt.value}" data-price="${opt.dataset.price}" data-compare_at_price="${opt.dataset.compare_at_price}" data-available="${opt.dataset.available}" ${opt.disabled ? 'disabled' : ''} ${opt.value === this.variantSelect.value ? 'selected' : ''}>
-            ${opt.text}
-          </option>`)
-      .join('');
-
-    return Array.from({ length: qty }, (_, index) => `
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-          <span class="bundle-option-index" style="display: ${qty === 1 ? 'none' : 'block'};">#${index + 1}</span>
-          <div class="variant-select-wrapper">
-            <select class="bundle-tier-select variant-select" data-index="${index + 1}">
-              ${optionsHtml}
-            </select>
-            <div class="variant-availability-message"></div>
-          </div>
-        </div>`).join('');
-  }
-
-  formatMoney(cents) {
-    const currency = this.getCurrencyCode();
-    const amount = (cents / 100).toFixed(2);
-    const currencySymbols = {
-      USD: '$',
-      CAD: '$',
-      AUD: '$',
-      NZD: '$',
-      HKD: '$',
-      SGD: '$',
-      EUR: '€',
-      GBP: '£',
-      JPY: '¥',
-      CNY: '¥',
-      SEK: 'kr',
-      NOK: 'kr',
-      DKK: 'kr',
-      CHF: 'CHF',
-      KRW: '₩',
-      INR: '₹',
-    };
-
-    if (currencySymbols[currency]) {
-      return `${currencySymbols[currency]}${amount}`;
-    }
-
-    try {
-      const formatted = new Intl.NumberFormat(navigator.language || 'en-US', {
-        style: 'currency',
-        currency,
-        currencyDisplay: 'symbol',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(cents / 100);
-      return formatted.replace(/\s*([A-Z]{2,3})\s*/g, '').trim();
-    } catch (error) {
-      return `${currency} ${amount}`;
-    }
-  }
-
   updateSaveBadge(saveBadge, amount) {
     if (!saveBadge) return;
     // 确保 badge 内有描述 span 和强文本 strong，若缺失则创建
@@ -245,6 +186,7 @@ class BundleSelectorWidget extends HTMLElement {
     this.updateSubscribePrice(label);
   }
 
+  /* 更新商品等级的价格 */
   updateTierPrice(label) {
     const tierSelects = Array.from(label.querySelectorAll('.bundle-tier-select'));
     const qty = tierSelects.length;
@@ -350,6 +292,7 @@ class BundleSelectorWidget extends HTMLElement {
     return option && (option.dataset.available === 'true' || option.dataset.available === true);
   }
 
+  /* 更新变体选择器的可用性状态 */
   updateAvailability(select) {
     const option = select.options[select.selectedIndex];
     const wrapper = select.closest('div');
@@ -367,6 +310,7 @@ class BundleSelectorWidget extends HTMLElement {
     }
   }
 
+  /* 更新所有变体选择器的可用性状态 */
   updateAllAvailability() {
     this.updateAvailability(this.variantSelect);
     Array.from(this.container.querySelectorAll('.bundle-tier-select')).forEach((select) => this.updateAvailability(select));
@@ -406,6 +350,85 @@ class BundleSelectorWidget extends HTMLElement {
     });
   }
 
+  /* 格式化金额 */
+  formatMoney(cents) {
+    const currency = this.getCurrencyCode();
+    const amount = (cents / 100).toFixed(2);
+    const currencySymbols = {
+      USD: '$',
+      CAD: '$',
+      AUD: '$',
+      NZD: '$',
+      HKD: '$',
+      SGD: '$',
+      EUR: '€',
+      GBP: '£',
+      JPY: '¥',
+      CNY: '¥',
+      SEK: 'kr',
+      NOK: 'kr',
+      DKK: 'kr',
+      CHF: 'CHF',
+      KRW: '₩',
+      INR: '₹',
+    };
+
+    if (currencySymbols[currency]) {
+      return `${currencySymbols[currency]}${amount}`;
+    }
+
+    try {
+      const formatted = new Intl.NumberFormat(navigator.language || 'en-US', {
+        style: 'currency',
+        currency,
+        currencyDisplay: 'symbol',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(cents / 100);
+      return formatted.replace(/\s*([A-Z]{2,3})\s*/g, '').trim();
+    } catch (error) {
+      return `${currency} ${amount}`;
+    }
+  }
+    /* 构建一个套餐下拉选择器 */
+  buildBundleSelect(tiers) {
+    const select = document.createElement('select');
+    select.classList.add('bundle-combo-select', 'sticky-atc__variant-select', 'select__select', 'variant-dropdown');
+    const optionsHtml = tiers.map((tier) => {
+      const comboName = tier.comboName || `${tier.minQuantity} Pack`;
+      return `
+          <option value="${tier.minQuantity}">
+            ${comboName}
+          </option>
+          `
+    })
+      .join('');
+    select.innerHTML = optionsHtml;
+
+    return select;
+  }
+
+  /* 构建变体选择器 */
+  buildVariantSelects(qty) {
+    const optionsHtml = Array.from(this.variantSelect.options)
+      .map((opt) => `
+          <option value="${opt.value}" data-price="${opt.dataset.price}" data-compare_at_price="${opt.dataset.compare_at_price}" data-available="${opt.dataset.available}" ${opt.disabled ? 'disabled' : ''} ${opt.value === this.variantSelect.value ? 'selected' : ''}>
+            ${opt.text}
+          </option>`)
+      .join('');
+
+    return Array.from({ length: qty }, (_, index) => `
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span class="bundle-option-index" style="display: ${qty === 1 ? 'none' : 'block'};">#${index + 1}</span>
+          <div class="variant-select-wrapper">
+            <select class="bundle-tier-select variant-select" data-index="${index + 1}">
+              ${optionsHtml}
+            </select>
+            <div class="variant-availability-message"></div>
+          </div>
+        </div>`).join('');
+  }
+
   /* 渲染阶梯选项 */
   renderTiers() {
     this.tierContainer.innerHTML = '';
@@ -418,9 +441,8 @@ class BundleSelectorWidget extends HTMLElement {
     }
 
     const basePrice = this.getBundleBasePrice();
-    const mergedTiers = this.mergeTiers(this.tiers, basePrice);
-
-    mergedTiers.forEach((tier, index) => {
+    this.mergedTiers = this.mergeTiers(this.tiers, basePrice);
+    this.mergedTiers.forEach((tier, index) => {
       const qty = tier.minQuantity;
       const discountValue = parseFloat(tier.value);
       const discountType = tier.type || 'percentage';
@@ -708,11 +730,16 @@ class BundleSelectorWidget extends HTMLElement {
       el.innerHTML = `SAVE ${detail.totalDiscount}`;
     });
 
+    // skicka折扣标签更新
+    const productFormInput = document.querySelector('.sticky-atc__variant-select').closest('.product-form__input')
+    const variantSelectDiv = productFormInput.querySelector('.select');
+    variantSelectDiv.style.display = 'none';
+    productFormInput.appendChild(this.buildBundleSelect(this.mergedTiers));
+
     // 派发事件，供外部监听更新商品详情价格
     document.dispatchEvent(new CustomEvent('bundle:priceUpdate', {
       detail
     }));
-    console.log('updatePriceToProductDetail', detail);
 
     return detail;
   }
