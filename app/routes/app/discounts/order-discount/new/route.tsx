@@ -42,7 +42,7 @@ export default function NewOrderDiscountPage() {
     setDiscountTiers((prev) =>
       prev.map((tier, i) =>
         i === index
-          ? { ...tier, [field]: field === "minQuantity" ? parseInt(val) || 0 : val }
+          ? { ...tier, [field]: field === "minQuantity" ? parseInt(val) || 0 : field === "value" ? val.replace(/^(\d*\.?\d{0,2}).*/, '$1') : val }
           : tier
       )
     );
@@ -204,9 +204,12 @@ export default function NewOrderDiscountPage() {
                         <s-text-field
                           value={String(tier.minQuantity)}
                           placeholder="50"
-                          onInput={(e) =>
-                            updateTier(index, "minQuantity", (e.target as HTMLInputElement).value)
-                          }
+                          onInput={(e) => {
+                            const target = e.target as HTMLInputElement;
+                            const cleaned = target.value.replace(/\D/g, '');
+                            if (cleaned !== target.value) target.value = cleaned;
+                            updateTier(index, "minQuantity", cleaned);
+                          }}
                         ></s-text-field>
                       </div>
                     </s-grid-item>
@@ -219,9 +222,12 @@ export default function NewOrderDiscountPage() {
                           <s-text-field
                             value={tier.value}
                             placeholder="10"
-                            onInput={(e) =>
-                              updateTier(index, "value", (e.target as HTMLInputElement).value)
-                            }
+                            onInput={(e) => {
+                              const target = e.target as HTMLInputElement;
+                              const cleaned = target.value.replace(/^(\d*\.?\d{0,2}).*/, '$1');
+                              if (cleaned !== target.value) target.value = cleaned;
+                              updateTier(index, "value", cleaned);
+                            }}
                           ></s-text-field>
                           <s-text>{type === "percentage" ? "%" : "$"}</s-text>
                         </div>
