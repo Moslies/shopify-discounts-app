@@ -396,11 +396,10 @@ class BundleSelectorWidget extends HTMLElement {
     selectDiv.classList.add('bundle-combo-select-wrapper', 'select', 'no-background', 'color-background-1', 'accent-color-accent-1', 'accent-2-color-text')
     const select = document.createElement('select');
     select.classList.add('bundle-combo-select', 'sticky-atc__variant-select', 'select__select', 'variant-dropdown');
-    select.value = selectedValue;
     const optionsHtml = tiers.map((tier) => {
       const comboName = tier.comboName || `${tier.minQuantity} Pack`;
       return `
-          <option value="${tier.minQuantity}">
+          <option value="${tier.minQuantity}" ${tier.minQuantity === selectedValue ? 'selected' : ''}>
             ${comboName}
           </option>
           `
@@ -735,17 +734,17 @@ class BundleSelectorWidget extends HTMLElement {
     });
 
     // skicka折扣标签更新
-    const productFormInput = document.querySelector('.sticky-atc__variant-select').closest('.product-form__input')
-    const variantSelectDiv = productFormInput.querySelector('.select');
-    const comboSelectDiv = productFormInput.querySelector('.bundle-combo-select-wrapper');
-    console.log(123, comboSelectDiv);
-    if (comboSelectDiv) {
-      comboSelectDiv.querySelector('.bundle-combo-select').value = selectedRadio.value;
-    } else {
-      variantSelectDiv.style.display = 'none';
-      productFormInput.appendChild(this.buildBundleSelect(this.mergedTiers, selectedRadio.value));
+    if (document.querySelector('.sticky-atc__variant-select')){
+      const productFormInput = document.querySelector('.sticky-atc__variant-select').closest('.product-form__input')
+      const variantSelectDiv = productFormInput.querySelector('.select');
+      const comboSelectDiv = productFormInput.querySelector('.bundle-combo-select-wrapper');
+      if (comboSelectDiv) {
+        comboSelectDiv.querySelector('.bundle-combo-select').value = selectedRadio.value;
+      } else {
+        variantSelectDiv.style.display = 'none';
+        productFormInput.appendChild(this.buildBundleSelect(this.mergedTiers, selectedRadio.value));
+      }
     }
-
 
     // 派发事件，供外部监听更新商品详情价格
     document.dispatchEvent(new CustomEvent('bundle:priceUpdate', {
