@@ -93,23 +93,23 @@ export default function TieredDiscountListPage() {
                     style={{ borderBottom: "1px solid var(--s-border-color-subdued, #eee)" }}
                   >
                     <td style={{ padding: "10px 12px" }}>
-                      <s-text color="base">{entry.title || "Untitled"}</s-text>
+                      <s-text type="strong" tone="auto">{entry.title || "Untitled"}</s-text>
                     </td>
                     <td style={{ padding: "10px 12px" }}>
-                      <s-text color="subdued">
+                      <s-text type="strong" tone="auto">
                         {entry.type === "percentage" ? "% off" : "$ off"}
                       </s-text>
                     </td>
                     <td style={{ padding: "10px 12px" }}>
-                      <s-text color="subdued">
+                      <s-text type="strong" tone="auto">
                         {entry.tiers && entry.tiers.length > 1
                           ? `${entry.tiers.length} tiers (${entry.tiers.map((t) => t.minQuantity).join("/")})`
                           : `min ${entry.minQuantity} item${entry.minQuantity > 1 ? "s" : ""}`}
                       </s-text>
                     </td>
                     <td style={{ padding: "10px 12px" }}>
-                      <s-text color="subdued">
-                        {entry.shopifyDiscountId ? entry.active ? "Active" : "Paused" : "Not linked"}
+                      <s-text type="strong" tone="auto">
+                        {entry.shopifyDiscountId ? entry.active ? <s-badge tone="success" icon="check-circle">Active</s-badge> : <s-badge tone="warning" icon="alert-triangle">Paused</s-badge> : <s-badge tone="critical" icon="question-circle">Not linked</s-badge>}
                       </s-text>
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "right", whiteSpace: "nowrap" }}>

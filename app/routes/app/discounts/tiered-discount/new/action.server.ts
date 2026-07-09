@@ -22,7 +22,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const active = formData.get("active") === "true";
 
   // Parse tiers from form data
-  let discountTiers: { minQuantity: number; value: string; message?: string }[] = [];
+  let discountTiers: { minQuantity: number; value: string; message?: string; comboName?: string; badgeText?: string }[] = [];
   const tiersRaw = formData.get("discountTiers");
   if (tiersRaw) {
     try { discountTiers = JSON.parse(tiersRaw as string); } catch {}
